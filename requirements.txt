@@ -1,7 +1,4 @@
 streamlit
 pandas 
 numpy
-hashlib
-uuid
-random
 streamlit_cookies_controller
