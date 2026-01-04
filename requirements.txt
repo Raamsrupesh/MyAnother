@@ -2,3 +2,4 @@ streamlit
 pandas 
 numpy
 streamlit_cookies_controller
+streamlit-geolocation
