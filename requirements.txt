@@ -1,0 +1,8 @@
+streamlit
+pandas 
+numpy
+sqlite3
+hashlib
+uuid
+random
+streamlit_cookies_controller
