@@ -5,7 +5,7 @@ conn = sqlite3.connect('todotask.db')
 cur = conn.cursor()
 cur.execute("CREATE TABLE IF NOT EXISTS todotask(id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, status VARCHAR(2) NOT NULL, task VARCHAR(2000) NOT NULL);")
 conn.commit()
-
+st.title("To do List: ")
 st.write("---")
 with st.form(f"TASK", clear_on_submit=True):
     abc = st.text_input("Enter Task: ")
@@ -38,5 +38,6 @@ try:
                 st.rerun()
 except st.errors.StreamlitDuplicateElementId:
     st.error("There are some duplicate elements.")       
+
 
 
