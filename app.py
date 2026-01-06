@@ -24,7 +24,7 @@ try:
             st.warning("It's EMPTY!")
 except:
     st.warning("Press the GO button")
-st.title("To do List: ")
+st.title("To do List/ Groceries list: ")
 st.write("---")
 
 df = pd.read_sql(f'SELECT * FROM "todotask{tab}";', con=conn)
@@ -116,6 +116,7 @@ with st.form(f"TASK", clear_on_submit=True):
 #         if abc != "":
 #             cur.execute(f"INSERT INTO todotask{tab}(status, task) VALUES(?, ?);", ('❌',abc))
 #             conn.commit()
+
 
 
 
