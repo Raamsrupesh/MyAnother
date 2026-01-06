@@ -1,4 +1,3 @@
-# Add this once near the top of the file (after set_page_config)
 import streamlit as st
 import pandas as pd
 import sqlite3
@@ -12,53 +11,9 @@ cur = conn.cursor()
 st.set_page_config(
     page_title="To Do List",
     page_icon="✅",
-    layout="wide",
-    initial_sidebar_state="collapsed"
+    layout="wide"
 )
-st.markdown("""
-<style>
-.task-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 6px;
-    padding: 6px 4px;
-    border-bottom: 1px solid #eee;
-    font-size: 15px;
-}
-.task-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex: 1;
-    min-width: 0; /* allow text to shrink */
-}
-.task-status {
-    flex-shrink: 0;
-}
-.task-text {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.task-text-done {
-    color: gray;
-    text-decoration: line-through;
-}
-.task-actions {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    flex-shrink: 0;
-}
-.task-btn {
-    padding: 2px 6px;
-    border-radius: 4px;
-    background-color: #f0f0f0;
-    font-size: 13px;
-}
-</style>
-""", unsafe_allow_html=True)
+
 # Generate or retrieve device UUID
 if 'device_uuid' not in st.session_state:
     query_params = st.query_params
@@ -70,214 +25,188 @@ if 'device_uuid' not in st.session_state:
 
 tab = st.session_state.device_uuid
 
-# Simple CSS for mobile optimization
+# SIMPLE CSS - Everything on one line
 st.markdown("""
 <style>
-/* Mobile-first design */
-.task-container {
-    background: white;
-    border-radius: 10px;
-    padding: 12px;
-    margin: 8px 0;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    border: 1px solid #e0e0e0;
-}
-
-.completed-task {
-    background: #f8f9fa;
-    opacity: 0.9;
-}
-
-.stButton > button {
-    min-height: 36px;
-    padding: 0 12px;
-    font-size: 14px;
-}
-
-/* Ensure buttons don't wrap on mobile */
-[data-testid="column"] {
-    min-width: fit-content !important;
-}
-
+/* Task row - ALL ON ONE LINE */
 .task-row {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
-    align-items: center;
-    width: 100%;
-    margin: 8px 0;
-    padding: 8px;
-    background: white;
-    border-radius: 10px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    border: 1px solid #e0e0e0;
-}
-
-.task-row > div {
-    flex-shrink: 0 !important;
-}
-
-@media (max-width: 768px) {
-    .task-container {
-        padding: 10px;
-        margin: 6px 0;
-    }
-    
-    .mobile-compact .stButton > button {
-        min-width: 40px;
-        padding: 0 8px;
-        font-size: 12px;
-    }
-    
-    /* Make task text compact on mobile */
-    .task-text {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        max-width: 150px; /* Adjusted for tighter mobile fit */
-    }
-    
-    .task-row {
-        padding: 6px;
-        margin: 6px 0;
-    }
-}
-
-/* Checkbox styling */
-.checkbox-wrapper {
     display: flex;
     align-items: center;
-    justify-content: center;
-    height: 100%;
+    background: white;
+    border-radius: 8px;
+    padding: 10px 15px;
+    margin: 8px 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    border: 1px solid #ddd;
+    gap: 10px;
 }
 
+/* Checkbox */
 .task-checkbox {
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    border: 2px solid #ddd;
+    border: 2px solid #ccc;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 12px;
+    flex-shrink: 0;
 }
 
-.checked {
+.task-checkbox.checked {
     background: #4CAF50;
     border-color: #4CAF50;
     color: white;
+}
+
+/* Task text - takes available space */
+.task-text {
+    flex: 1;
+    font-size: 16px;
+    margin: 0;
+    padding: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.task-text.completed {
+    text-decoration: line-through;
+    color: #888;
+}
+
+/* Buttons container */
+.task-buttons {
+    display: flex;
+    gap: 5px;
+    flex-shrink: 0;
+}
+
+/* Custom HTML buttons */
+.html-button {
+    background: #4CAF50;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    min-width: 40px;
+}
+
+.html-button.delete {
+    background: #f44336;
+}
+
+.html-button:hover {
+    opacity: 0.9;
 }
 </style>
 """, unsafe_allow_html=True)
 
 # HEADER
-st.markdown(f"""
-<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-            color: white; padding: 16px; border-radius: 10px; margin-bottom: 16px;">
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-        <div>
-            <h1 style="margin: 0; font-size: 22px;">✅ To Do List</h1>
-            <p style="margin: 5px 0 0 0; font-size: 13px; opacity: 0.9;">
-                ID: {tab[:8]}...
-            </p>
-        </div>
-        <button onclick="navigator.clipboard.writeText('{st.get_option('server.baseUrlPath') or ''}?user_id={tab}')" 
-                style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); 
-                       padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer;">
-            📋 Share
-        </button>
-    </div>
-</div>
-""", unsafe_allow_html=True)
+st.title("✅ To Do List")
+st.write(f"**Your ID:** `{tab[:8]}...`")
 
 # Initialize table
-cur.execute(
-    f'CREATE TABLE IF NOT EXISTS "todotask_{tab}"('
-    'id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, '
-    'status VARCHAR(2) NOT NULL, '
-    'task VARCHAR(2000) NOT NULL, '
-    'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);'
-)
+cur.execute(f'CREATE TABLE IF NOT EXISTS "todotask_{tab}"(id INTEGER PRIMARY KEY, status TEXT, task TEXT)')
 conn.commit()
 
 # Load tasks
 def load_tasks():
     try:
-        df = pd.read_sql(f'SELECT * FROM "todotask_{tab}" ORDER BY created_at DESC;', con=conn)
+        df = pd.read_sql(f'SELECT * FROM "todotask_{tab}" ORDER BY id DESC', conn)
         return df
     except:
-        return pd.DataFrame(columns=['id', 'status', 'task', 'created_at'])
+        return pd.DataFrame(columns=['id', 'status', 'task'])
 
 df = load_tasks()
 
-# PROGRESS SECTION
+# PROGRESS
 if len(df) > 0:
     completed = df[df['status'] == '✅'].shape[0]
     total = len(df)
-    progress_percent = (completed / total * 100) if total > 0 else 0
+    progress = (completed/total)*100 if total > 0 else 0
     
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
     with col1:
-        st.metric("Total", total)
+        st.metric("Total Tasks", total)
     with col2:
-        st.metric("Done", completed)
-    with col3:
-        st.metric("Progress", f"{progress_percent:.0f}%")
-    
-    st.progress(progress_percent / 100)
+        st.metric("Completed", completed)
+    st.progress(progress/100)
 
-# TASKS SECTION - USING FLEX ROW FOR HORIZONTAL ALIGNMENT
+# DISPLAY TASKS - ONE LINE EACH
 if len(df) > 0:
-    st.markdown("### 📝 Your Tasks")
-    
     for index, row in df.iterrows():
-        is_completed = row['status'] == "✅"
+        is_completed = row['status'] == '✅'
         
-        # Use a flex row container for horizontal layout
-        st.markdown('<div class="task-row">', unsafe_allow_html=True)
+        # Create ONE LINE with HTML
+        html = f"""
+        <div class="task-row">
+            <div class="task-checkbox {'checked' if is_completed else ''}">
+                {'✓' if is_completed else ''}
+            </div>
+            <div class="task-text {'completed' if is_completed else ''}">
+                {row['task']}
+            </div>
+            <div class="task-buttons">
+        """
         
-        # Create 4 columns inside the flex row
-# BUTTON LOGIC (kept as real buttons so Python can run)
-c1, c2, c3 = st.columns([1, 1, 1])
-
-with c2:
-    # DONE / Undo
-    if row['status'] == "✅":
-        if st.button("Undo", key=f"mark_undone_{row['id']}"):
-            cur.execute(f'UPDATE "todotask_{tab}" SET status = "❌" WHERE id = ?;', (row['id'],))
+        # Add buttons as HTML links (they'll trigger reloads)
+        if is_completed:
+            html += f"""
+                <a href="?user_id={tab}&undo={row['id']}" class="html-button">❌</a>
+            """
+        else:
+            html += f"""
+                <a href="?user_id={tab}&complete={row['id']}" class="html-button">✅</a>
+            """
+        
+        html += f"""
+                <a href="?user_id={tab}&delete={row['id']}" class="html-button delete">🗑️</a>
+            </div>
+        </div>
+        """
+        
+        st.markdown(html, unsafe_allow_html=True)
+        
+        # Handle button clicks via URL parameters
+        params = st.query_params
+        if 'complete' in params and params['complete'] == str(row['id']):
+            cur.execute(f'UPDATE "todotask_{tab}" SET status="✅" WHERE id=?', (row['id'],))
             conn.commit()
+            st.query_params.clear()
             st.rerun()
-    else:
-        if st.button("DONE", key=f"mark_done_{row['id']}"):
-            cur.execute(f'UPDATE "todotask_{tab}" SET status = "✅" WHERE id = ?;', (row['id'],))
+        elif 'undo' in params and params['undo'] == str(row['id']):
+            cur.execute(f'UPDATE "todotask_{tab}" SET status="❌" WHERE id=?', (row['id'],))
             conn.commit()
+            st.query_params.clear()
             st.rerun()
+        elif 'delete' in params and params['delete'] == str(row['id']):
+            cur.execute(f'DELETE FROM "todotask_{tab}" WHERE id=?', (row['id'],))
+            conn.commit()
+            st.query_params.clear()
+            st.rerun()
+else:
+    st.info("No tasks yet! Add your first task below.")
 
-with c3:
-    if st.button("🗑️", key=f"delete_{row['id']}"):
-        st.session_state[task_key]['delete_clicked'] = True
+# ADD TASK FORM
+with st.form("add_task"):
+    task = st.text_input("New Task:")
+    if st.form_submit_button("Add Task") and task:
+        cur.execute(f'INSERT INTO "todotask_{tab}"(status, task) VALUES("❌", ?)', (task,))
+        conn.commit()
         st.rerun()
 
-# VISUAL ROW (always one line on mobile)
-status_icon = "✅" if row['status'] == "✅" else "⬜"
-task_class = "task-text task-text-done" if row['status'] == "✅" else "task-text"
+# CLEAR ALL
+if len(df) > 0:
+    if st.button("Clear All Tasks"):
+        cur.execute(f'DELETE FROM "todotask_{tab}"')
+        conn.commit()
+        st.rerun()
 
-st.markdown(
-    f"""
-    <div class="task-row">
-        <div class="task-left">
-            <span class="task-status">{status_icon}</span>
-            <span class="{task_class}">{row['task']}</span>
-        </div>
-        <div class="task-actions">
-            <span class="task-btn">{'Undo' if row['status'] == '✅' else 'DONE'}</span>
-            <span class="task-btn">🗑️</span>
-        </div>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-
+conn.close()
 st.markdown("")  # tiny spacer
 
 # import streamlit as st
@@ -572,6 +501,7 @@ st.markdown("")  # tiny spacer
 #         if abc != "":
 #             cur.execute(f"INSERT INTO todotask{tab}(status, task) VALUES(?, ?);", ('❌',abc))
 #             conn.commit()
+
 
 
 
