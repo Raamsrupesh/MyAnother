@@ -7,15 +7,16 @@ import uuid
 conn = sqlite3.connect('todotask.db', check_same_thread=False)
 cur = conn.cursor()
 
-# Set page configuration
+# Set page configuration for mobile-first
 st.set_page_config(
     page_title="To Do List",
     page_icon="✅",
     layout="wide",
-    initial_sidebar_state="collapsed"  # Better for mobile
+    initial_sidebar_state="collapsed",  # Hide sidebar on mobile
+    menu_items=None  # Remove menu on mobile
 )
 
-# Generate or retrieve device UUID from session state
+# Generate or retrieve device UUID
 if 'device_uuid' not in st.session_state:
     query_params = st.query_params
     if 'user_id' in query_params:
@@ -26,167 +27,272 @@ if 'device_uuid' not in st.session_state:
 
 tab = st.session_state.device_uuid
 
-# Apply responsive CSS
+# MOBILE-FIRST CSS (small screens < 768px are default)
 st.markdown("""
 <style>
-/* Mobile-first responsive design */
-@media (max-width: 768px) {
-    /* Stack columns vertically on mobile */
-    .mobile-task-row {
-        flex-direction: column !important;
-        align-items: stretch !important;
-    }
-    
-    .mobile-task-col {
-        width: 100% !important;
-        margin-bottom: 10px;
-    }
-    
-    .mobile-button-group {
-        display: flex;
-        justify-content: space-between;
-        gap: 10px;
-        margin-top: 10px;
-    }
-    
-    .mobile-button-group button {
-        flex: 1;
-    }
-    
-    /* Adjust header for mobile */
-    .main-header {
-        padding: 15px !important;
-        margin: 10px 5px !important;
-    }
-    
-    /* Adjust task container for mobile */
-    .task-container {
-        padding: 12px !important;
-        margin: 10px 5px !important;
-    }
-    
-    /* Sidebar adjustments */
-    .sidebar .sidebar-content {
-        padding: 10px !important;
-    }
-    
-    /* Hide sidebar on mobile if not needed */
-    [data-testid="stSidebar"] {
-        min-width: 0 !important;
-        max-width: none !important;
-    }
+/* ===== MOBILE FIRST (Default for < 768px) ===== */
+/* Base container for entire app */
+.main-container {
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 10px;
 }
 
-/* Base styles */
-.task-container {
-    background: white;
-    border-radius: 12px;
+/* Header for mobile */
+.mobile-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
     padding: 15px;
-    margin: 10px 0;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border-radius: 10px;
+    margin-bottom: 15px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Task card for mobile */
+.mobile-task-card {
+    background: white;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     border: 1px solid #e8e8e8;
 }
 
-.task-completed {
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    opacity: 0.9;
+/* Completed task styling */
+.mobile-task-completed {
+    background: #f8f9fa;
+    border-left: 4px solid #4CAF50;
 }
 
-.mobile-task-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
+/* Task content layout for mobile */
+.task-content-mobile {
+    display: block;
+    width: 100%;
 }
 
-.mobile-task-content {
-    flex: 1;
-    min-width: 200px;
-    padding: 0 10px;
-}
-
-.mobile-task-text {
-    font-size: 16px;
-    color: #333;
-    margin: 0;
-    word-break: break-word;
-}
-
-.task-text-completed {
-    color: #6c757d !important;
-    text-decoration: line-through;
-}
-
-.mobile-task-actions {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-}
-
-.status-indicator {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    display: flex;
+/* Status indicator for mobile */
+.status-mobile {
+    display: inline-flex;
     align-items: center;
     justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
     background: #f0f0f0;
-    font-size: 12px;
+    margin-right: 10px;
+    vertical-align: middle;
 }
 
-.status-completed {
+.status-completed-mobile {
     background: #4CAF50;
     color: white;
 }
 
-/* Button styles */
+/* Task text for mobile */
+.task-text-mobile {
+    font-size: 16px;
+    color: #333;
+    margin: 10px 0;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.completed-text-mobile {
+    color: #6c757d !important;
+    text-decoration: line-through;
+}
+
+/* Action buttons for mobile (stacked vertically) */
+.action-buttons-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.action-buttons-mobile button {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 10px !important;
+    border-radius: 8px !important;
+    font-size: 15px !important;
+}
+
+/* Form styling for mobile */
+.mobile-form-container {
+    background: white;
+    border-radius: 10px;
+    padding: 15px;
+    margin: 15px 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.mobile-form-input {
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+.mobile-form-button {
+    width: 100% !important;
+    padding: 12px !important;
+}
+
+/* Progress bar for mobile */
+.mobile-progress-container {
+    background: white;
+    border-radius: 10px;
+    padding: 15px;
+    margin: 15px 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Stats for mobile */
+.stats-mobile {
+    display: flex;
+    justify-content: space-between;
+    margin: 10px 0;
+}
+
+.stat-item-mobile {
+    text-align: center;
+    flex: 1;
+}
+
+.stat-value-mobile {
+    font-size: 20px;
+    font-weight: bold;
+    color: #333;
+}
+
+.stat-label-mobile {
+    font-size: 12px;
+    color: #666;
+}
+
+/* Empty state for mobile */
+.empty-state-mobile {
+    background: white;
+    border-radius: 10px;
+    padding: 30px 20px;
+    margin: 20px 0;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* ===== TABLET (768px - 1024px) ===== */
+@media (min-width: 768px) {
+    .main-container {
+        max-width: 90%;
+        padding: 20px;
+    }
+    
+    .mobile-task-card {
+        padding: 18px;
+    }
+    
+    .action-buttons-mobile {
+        flex-direction: row;
+    }
+    
+    .action-buttons-mobile button {
+        flex: 1;
+    }
+}
+
+/* ===== DESKTOP (> 1024px) ===== */
+@media (min-width: 1024px) {
+    .main-container {
+        max-width: 800px;
+        padding: 30px 20px;
+    }
+    
+    .mobile-header {
+        padding: 20px;
+        border-radius: 12px;
+    }
+    
+    .mobile-task-card {
+        padding: 20px;
+        border-radius: 12px;
+    }
+    
+    .action-buttons-mobile {
+        flex-direction: row;
+        justify-content: flex-end;
+    }
+    
+    .action-buttons-mobile button {
+        max-width: 150px;
+    }
+    
+    /* Two-column layout for desktop */
+    .desktop-columns {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        align-items: start;
+    }
+}
+
+/* Utility classes */
+.hide-on-mobile {
+    display: none;
+}
+
+.show-on-desktop {
+    display: none;
+}
+
+@media (min-width: 768px) {
+    .hide-on-mobile {
+        display: block;
+    }
+    
+    .show-on-desktop {
+        display: flex;
+    }
+}
+
+/* Make all Streamlit elements responsive */
+[data-testid="stHorizontalBlock"] {
+    gap: 10px !important;
+}
+
 .stButton > button {
-    border-radius: 8px;
-    padding: 6px 12px;
-    font-size: 14px;
-    min-height: 36px;
+    min-height: 44px !important; /* Minimum touch target size */
 }
 
-/* Responsive form */
-@media (max-width: 768px) {
-    .mobile-form-row {
-        flex-direction: column !important;
-    }
-    
-    .mobile-form-row > div {
-        width: 100% !important;
-        margin-bottom: 10px !important;
-    }
+.stTextInput > div > div > input {
+    font-size: 16px !important; /* Prevent iOS zoom */
+    min-height: 44px !important;
 }
 
-/* Progress bar responsive */
-@media (max-width: 768px) {
-    .progress-metrics {
-        flex-direction: column !important;
-        gap: 10px !important;
-    }
-    
-    .progress-metrics > div {
-        width: 100% !important;
-    }
+/* Fix for mobile scrolling */
+[data-testid="stAppViewContainer"] {
+    overflow-x: hidden;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# Title and user info
+# Main container starts here
+st.markdown('<div class="main-container">', unsafe_allow_html=True)
+
+# MOBILE HEADER
 st.markdown(f"""
-<div style="background: white; border-radius: 12px; padding: 20px; margin: 10px 0; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);">
-    <h1 style="margin:0; color:#333; display:flex; align-items:center; gap:10px;">
-        ✅ Personal To Do List
-    </h1>
-    <p style="margin:5px 0 0 0; color:#666; font-size:14px;">
-        ID: <code style="background:#f0f0f0; padding:2px 8px; border-radius:4px;">{tab[:8]}...</code>
-        <span style="float:right;">
-            <button onclick="navigator.clipboard.writeText(window.location.href)" style="background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:white; border:none; padding:4px 12px; border-radius:6px; font-size:12px; cursor:pointer;">
-                📋 Copy Link
-            </button>
-        </span>
-    </p>
+<div class="mobile-header">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h1 style="margin: 0; font-size: 22px; color: white;">✅ To Do List</h1>
+            <p style="margin: 5px 0 0 0; font-size: 13px; opacity: 0.9; color: white;">
+                ID: {tab[:8]}...
+            </p>
+        </div>
+        <button onclick="navigator.clipboard.writeText('{st.get_option('server.baseUrlPath') or ''}?user_id={tab}')" 
+                style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); 
+                       padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer;">
+            📋 Share
+        </button>
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -210,141 +316,116 @@ def load_tasks():
 
 df = load_tasks()
 
-# Progress section - Responsive layout
+# PROGRESS SECTION (Mobile optimized)
 if len(df) > 0:
     completed = df[df['status'] == '✅'].shape[0]
     total = len(df)
     progress_percent = (completed / total * 100) if total > 0 else 0
     
-    st.markdown("""
-    <div style="background: white; border-radius: 12px; padding: 15px; margin: 15px 0; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);">
-        <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center;" class="progress-metrics">
-    """, unsafe_allow_html=True)
+    st.markdown('<div class="mobile-progress-container">', unsafe_allow_html=True)
+    st.markdown('<h3 style="margin-top: 0;">📊 Progress</h3>', unsafe_allow_html=True)
     
-    col1, col2, col3, col4 = st.columns([2, 2, 2, 4])
+    # Mobile stats
+    st.markdown('<div class="stats-mobile">', unsafe_allow_html=True)
+    col1, col2, col3 = st.columns(3)
     
     with col1:
-        st.metric("Total", total)
+        st.markdown(f'<div class="stat-item-mobile"><div class="stat-value-mobile">{total}</div><div class="stat-label-mobile">Total</div></div>', unsafe_allow_html=True)
     with col2:
-        st.metric("Done", completed)
+        st.markdown(f'<div class="stat-item-mobile"><div class="stat-value-mobile">{completed}</div><div class="stat-label-mobile">Done</div></div>', unsafe_allow_html=True)
     with col3:
-        st.metric("Progress", f"{progress_percent:.1f}%")
-    with col4:
-        st.progress(progress_percent / 100)
+        st.markdown(f'<div class="stat-item-mobile"><div class="stat-value-mobile">{progress_percent:.0f}%</div><div class="stat-label-mobile">Progress</div></div>', unsafe_allow_html=True)
     
-    st.markdown("</div></div>", unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Progress bar
+    st.progress(progress_percent / 100)
+    st.markdown('</div>', unsafe_allow_html=True)
 
-# Display tasks with mobile-responsive layout
+# TASKS SECTION (Mobile optimized layout)
 if len(df) > 0:
-    st.markdown("### 📝 Your Tasks")
+    st.markdown('<h3 style="margin: 20px 0 15px 0;">📝 Your Tasks</h3>', unsafe_allow_html=True)
     
     for index, row in df.iterrows():
         is_completed = row['status'] == "✅"
-        container_class = "task-container task-completed" if is_completed else "task-container"
+        task_class = "mobile-task-card mobile-task-completed" if is_completed else "mobile-task-card"
         
-        st.markdown(f'<div class="{container_class}">', unsafe_allow_html=True)
+        st.markdown(f'<div class="{task_class}">', unsafe_allow_html=True)
         
-        # Mobile responsive row
-        st.markdown('<div class="mobile-task-row">', unsafe_allow_html=True)
-        
-        # Status indicator (always visible)
-        status_class = "status-indicator status-completed" if is_completed else "status-indicator"
-        status_text = "✓" if is_completed else "○"
-        
-        # Create flexible layout
+        # Status and task in a row for mobile
         col1, col2 = st.columns([1, 11])
         
         with col1:
-            # Status indicator only - small and compact
-            st.markdown(f'<div class="{status_class}" style="margin: auto;">{status_text}</div>', unsafe_allow_html=True)
+            # Status indicator
+            status_class = "status-mobile status-completed-mobile" if is_completed else "status-mobile"
+            status_text = "✓" if is_completed else "○"
+            st.markdown(f'<div class="{status_class}">{status_text}</div>', unsafe_allow_html=True)
         
         with col2:
-            # Task text and buttons in a vertical stack for mobile
-            st.markdown('<div style="width: 100%;">', unsafe_allow_html=True)
-            
-            # Task text (full width)
-            task_class = "mobile-task-text task-text-completed" if is_completed else "mobile-task-text"
-            st.markdown(f'<p class="{task_class}" style="margin-bottom: 10px;">{row["task"]}</p>', unsafe_allow_html=True)
-            
-            # Action buttons (horizontal on desktop, full width on mobile)
-            st.markdown('<div class="mobile-button-group">', unsafe_allow_html=True)
-            
-            col_btn1, col_btn2, col_btn3 = st.columns(3)
-            
-            with col_btn1:
-                # Toggle status button
-                if is_completed:
-                    if st.button("Mark ❌", key=f"undo_{row['id']}", use_container_width=True):
-                        cur.execute(f'UPDATE "todotask_{tab}" SET status = "❌" WHERE id = ?;', (row['id'],))
-                        conn.commit()
-                        st.rerun()
-                else:
-                    if st.button("Mark ✅", key=f"done_{row['id']}", use_container_width=True):
-                        cur.execute(f'UPDATE "todotask_{tab}" SET status = "✅" WHERE id = ?;', (row['id'],))
-                        conn.commit()
-                        st.rerun()
-            
-            with col_btn2:
-                # Delete button
-                if st.button("🗑️ Delete", key=f"delete_{row['id']}", use_container_width=True):
-                    cur.execute(f'DELETE FROM "todotask_{tab}" WHERE id = ?;', (row['id'],))
-                    conn.commit()
-                    st.rerun()
-            
-            with col_btn3:
-                # Small space for better mobile layout
-                st.write("")  # Empty for spacing
-            
-            st.markdown('</div>', unsafe_allow_html=True)  # End button group
-            st.markdown('</div>', unsafe_allow_html=True)  # End task content
+            # Task text
+            text_class = "task-text-mobile completed-text-mobile" if is_completed else "task-text-mobile"
+            st.markdown(f'<div class="{text_class}">{row["task"]}</div>', unsafe_allow_html=True)
         
-        st.markdown('</div>', unsafe_allow_html=True)  # End mobile-task-row
-        st.markdown('</div>', unsafe_allow_html=True)  # End task-container
+        # Action buttons (stacked vertically on mobile, horizontal on larger screens)
+        st.markdown('<div class="action-buttons-mobile">', unsafe_allow_html=True)
+        
+        # Toggle status button
+        if is_completed:
+            if st.button("Mark as Incomplete", key=f"undo_{row['id']}", use_container_width=True):
+                cur.execute(f'UPDATE "todotask_{tab}" SET status = "❌" WHERE id = ?;', (row['id'],))
+                conn.commit()
+                st.rerun()
+        else:
+            if st.button("Mark as Complete", key=f"done_{row['id']}", use_container_width=True):
+                cur.execute(f'UPDATE "todotask_{tab}" SET status = "✅" WHERE id = ?;', (row['id'],))
+                conn.commit()
+                st.rerun()
+        
+        # Delete button
+        if st.button("🗑️ Delete Task", key=f"delete_{row['id']}", use_container_width=True):
+            cur.execute(f'DELETE FROM "todotask_{tab}" WHERE id = ?;', (row['id'],))
+            conn.commit()
+            st.rerun()
+        
+        st.markdown('</div>', unsafe_allow_html=True)  # End action buttons
+        st.markdown('</div>', unsafe_allow_html=True)  # End task card
 else:
-    # Empty state
+    # Empty state for mobile
     st.markdown("""
-    <div style="background: white; border-radius: 12px; padding: 40px; margin: 20px 0; text-align: center; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);">
-        <h3 style="color:#666; margin-bottom:15px;">✨ No tasks yet!</h3>
-        <p style="color:#888;">Add your first task below to get started</p>
+    <div class="empty-state-mobile">
+        <div style="font-size: 48px; margin-bottom: 15px;">📝</div>
+        <h3 style="color:#333; margin-bottom:10px;">No tasks yet!</h3>
+        <p style="color:#666; margin:0;">Add your first task below to get started</p>
     </div>
     """, unsafe_allow_html=True)
 
-# Add new task form - Mobile responsive
-st.markdown("""
-<div style="background: white; border-radius: 12px; padding: 20px; margin: 20px 0; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);">
-    <h3 style="margin-top:0;">➕ Add New Task</h3>
-""", unsafe_allow_html=True)
+# ADD TASK FORM (Mobile optimized)
+st.markdown('<div class="mobile-form-container">', unsafe_allow_html=True)
+st.markdown('<h3 style="margin-top: 0;">➕ Add New Task</h3>', unsafe_allow_html=True)
 
 with st.form("add_task", clear_on_submit=True):
-    # Responsive form layout
-    st.markdown('<div class="mobile-form-row" style="display:flex; flex-wrap:wrap; gap:10px;">', unsafe_allow_html=True)
-    
-    # Input field (takes most space)
+    # Input field (full width on mobile)
     task_input = st.text_input(
-        "Task description:",
-        placeholder="What needs to be done?",
+        "",
+        placeholder="Enter your task here...",
         label_visibility="collapsed",
-        key="task_input"
+        key="task_input_mobile"
     )
     
-    # Add button (compact)
-    col1, col2 = st.columns([3, 1])
-    with col2:
-        submitted = st.form_submit_button("➕ Add", use_container_width=True)
-    
-    st.markdown('</div>', unsafe_allow_html=True)
+    # Add button (full width on mobile)
+    submitted = st.form_submit_button("Add Task", use_container_width=True, type="primary")
     
     if submitted and task_input.strip() != "":
         cur.execute(f'INSERT INTO "todotask_{tab}"(status, task) VALUES(?, ?);', ('❌', task_input.strip()))
         conn.commit()
-        st.success("✓ Task added!")
+        st.success("Task added! ✅")
         st.rerun()
     elif submitted and task_input.strip() == "":
-        st.warning("Please enter a task description!")
+        st.warning("Please enter a task description")
 
 st.markdown('</div>', unsafe_allow_html=True)
 
-# Clear all tasks button (mobile-friendly)
+# CLEAR ALL BUTTON (Mobile optimized)
 if len(df) > 0:
     st.markdown("---")
     
@@ -352,54 +433,52 @@ if len(df) > 0:
         st.session_state.show_clear_confirmation = False
     
     if not st.session_state.show_clear_confirmation:
-        if st.button("🗑️ Clear All Tasks", type="secondary", use_container_width=True):
+        if st.button("🗑️ Clear All Tasks", use_container_width=True, type="secondary"):
             st.session_state.show_clear_confirmation = True
             st.rerun()
     else:
-        st.warning("⚠️ Delete ALL tasks? This cannot be undone!")
+        st.warning("⚠️ Delete ALL tasks?")
+        
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("✅ Yes", type="primary", use_container_width=True):
+            if st.button("✅ Yes, Delete", use_container_width=True, type="primary"):
                 cur.execute(f'DELETE FROM "todotask_{tab}"')
                 conn.commit()
                 st.session_state.show_clear_confirmation = False
-                st.success("All tasks cleared!")
+                st.success("All tasks cleared! ✨")
                 st.rerun()
         with col2:
-            if st.button("❌ No", type="secondary", use_container_width=True):
+            if st.button("❌ Cancel", use_container_width=True):
                 st.session_state.show_clear_confirmation = False
                 st.rerun()
 
-# Mobile-friendly sidebar toggle
-st.sidebar.title("📱 Mobile Menu")
+# DESKTOP-ONLY SIDEBAR (hidden on mobile)
 with st.sidebar:
-    st.markdown(f"**Your ID:** `{tab[:8]}...`")
-    
-    share_url = f"{st.get_option('server.baseUrlPath') or ''}?user_id={tab}"
-    if st.button("📋 Copy Share Link", use_container_width=True):
-        st.code(share_url, language="text")
-    
-    st.markdown("---")
-    
     if len(df) > 0:
-        completed = df[df['status'] == '✅'].shape[0]
+        completed = df[df['status'] == '✅'].shape[0] if len(df) > 0 else 0
         total = len(df)
         progress_percent = (completed / total * 100) if total > 0 else 0
         
-        st.metric("Progress", f"{progress_percent:.0f}%")
+        st.metric("Overall Progress", f"{progress_percent:.0f}%")
         st.progress(progress_percent / 100)
-        st.caption(f"{completed}/{total} tasks done")
+        st.caption(f"{completed} of {total} tasks completed")
 
 conn.close()
 
-# Footer with responsive text
+# Footer for mobile
 st.markdown("""
-<div style="text-align: center; color: #666; font-size: 12px; padding: 20px 10px;">
-    <div style="display: inline-block; background: #f8f9fa; padding: 8px 16px; border-radius: 8px;">
-        🔒 Tasks stored locally • 📱 Mobile-friendly • 🔗 Share with link
+<div style="text-align: center; margin-top: 30px; padding: 15px; color: #666; font-size: 12px;">
+    <div style="display: inline-flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center;">
+        <span>✅ Tasks saved locally</span>
+        <span style="color: #ccc;">•</span>
+        <span>📱 Mobile optimized</span>
+        <span style="color: #ccc;">•</span>
+        <span>🔄 Refresh to sync</span>
     </div>
 </div>
 """, unsafe_allow_html=True)
+
+st.markdown('</div>', unsafe_allow_html=True)  # End main container
 # import streamlit as st
 # import pandas as pd
 # import sqlite3
@@ -692,6 +771,7 @@ st.markdown("""
 #         if abc != "":
 #             cur.execute(f"INSERT INTO todotask{tab}(status, task) VALUES(?, ?);", ('❌',abc))
 #             conn.commit()
+
 
 
 
