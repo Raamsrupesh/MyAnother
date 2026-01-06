@@ -1,107 +1,53 @@
 import streamlit as st
-import pandas as pd
 import sqlite3
 import uuid
-import time
 
-# Initialize database
-conn = sqlite3.connect('todotask.db', check_same_thread=False)
+# Setup
+conn = sqlite3.connect('todo.db', check_same_thread=False)
 cur = conn.cursor()
 
-# Page config
-st.set_page_config(page_title="To Do List", page_icon="✅")
+# User ID
+if 'user_id' not in st.session_state:
+    st.session_state.user_id = str(uuid.uuid4())[:8]
 
-# Get user ID
-if 'device_uuid' not in st.session_state:
-    st.session_state.device_uuid = str(uuid.uuid4())
-tab = st.session_state.device_uuid
+user = st.session_state.user_id
+cur.execute(f"CREATE TABLE IF NOT EXISTS todo_{user} (id INTEGER PRIMARY KEY, task TEXT, done INTEGER DEFAULT 0)")
 
-# Initialize table
-cur.execute(f'''
-    CREATE TABLE IF NOT EXISTS "todotask_{tab}"(
-        id INTEGER PRIMARY KEY,
-        status TEXT,
-        task TEXT
-    )
-''')
-conn.commit()
+st.title(f"📝 To Do List - {user}")
 
-# Load tasks
-def load_tasks():
-    try:
-        return pd.read_sql(f'SELECT * FROM "todotask_{tab}" ORDER BY id DESC', conn)
-    except:
-        return pd.DataFrame()
+# Add
+task = st.text_input("Add task:")
+if st.button("Add") and task:
+    cur.execute(f"INSERT INTO todo_{user}(task) VALUES(?)", (task,))
+    conn.commit()
+    st.rerun()
 
-# === SIMPLE ONE-LINE LAYOUT USING MARKDOWN TABLES ===
-st.title("✅ To Do List")
+# Display - ALL ON ONE LINE
+tasks = cur.execute(f"SELECT * FROM todo_{user}").fetchall()
 
-# Add task form
-with st.form("add_form"):
-    new_task = st.text_input("Add new task:")
-    if st.form_submit_button("Add"):
-        if new_task:
-            cur.execute(f'INSERT INTO "todotask_{tab}"(status, task) VALUES("❌", ?)', (new_task,))
-            conn.commit()
-            st.rerun()
+for t_id, t_task, t_done in tasks:
+    # ONE LINE using HTML
+    st.markdown(f"""
+    <div style="display: flex; align-items: center; gap: 10px; margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 5px;">
+        <span>{'✅' if t_done else '⬜'}</span>
+        <span style="flex: 1;{'text-decoration: line-through; color: gray;' if t_done else ''}">{t_task}</span>
+        <a href="?toggle={t_id}&user={user}" style="background: #4CAF50; color: white; padding: 5px 10px; border-radius: 3px; text-decoration: none;">{'❌' if t_done else '✅'}</a>
+        <a href="?delete={t_id}&user={user}" style="background: #f44336; color: white; padding: 5px 10px; border-radius: 3px; text-decoration: none;">🗑️</a>
+    </div>
+    """, unsafe_allow_html=True)
 
-# Load tasks
-df = load_tasks()
-
-if len(df) > 0:
-    # Progress
-    completed = sum(1 for s in df['status'] if s == '✅')
-    total = len(df)
-    st.progress(completed/total if total > 0 else 0)
-    st.caption(f"{completed}/{total} completed")
-    
-    # Display each task in ONE LINE
-    for idx, row in df.iterrows():
-        # Create a single line using columns
-        col1, col2, col3, col4 = st.columns([1, 8, 1, 1])
-        
-        with col1:
-            # Status indicator
-            if row['status'] == '✅':
-                st.write("✓")
-            else:
-                st.write("○")
-        
-        with col2:
-            # Task text
-            if row['status'] == '✅':
-                st.markdown(f"<span style='text-decoration: line-through; color: gray;'>{row['task']}</span>", 
-                          unsafe_allow_html=True)
-            else:
-                st.write(row['task'])
-        
-        with col3:
-            # Toggle button
-            if row['status'] == '✅':
-                if st.button("❌", key=f"undo_{row['id']}"):
-                    cur.execute(f'UPDATE "todotask_{tab}" SET status="❌" WHERE id=?', (row['id'],))
-                    conn.commit()
-                    st.rerun()
-            else:
-                if st.button("✅", key=f"done_{row['id']}"):
-                    cur.execute(f'UPDATE "todotask_{tab}" SET status="✅" WHERE id=?', (row['id'],))
-                    conn.commit()
-                    st.rerun()
-        
-        with col4:
-            # Delete button
-            if st.button("🗑️", key=f"del_{row['id']}"):
-                cur.execute(f'DELETE FROM "todotask_{tab}" WHERE id=?', (row['id'],))
-                conn.commit()
-                st.rerun()
-    
-    # Clear all
-    if st.button("Clear All Tasks"):
-        cur.execute(f'DELETE FROM "todotask_{tab}"')
-        conn.commit()
-        st.rerun()
-else:
-    st.info("No tasks yet. Add one above!")
+# Handle clicks
+params = st.query_params
+if 'toggle' in params:
+    cur.execute(f"UPDATE todo_{user} SET done = NOT done WHERE id=?", (params['toggle'],))
+    conn.commit()
+    st.query_params.clear()
+    st.rerun()
+if 'delete' in params:
+    cur.execute(f"DELETE FROM todo_{user} WHERE id=?", (params['delete'],))
+    conn.commit()
+    st.query_params.clear()
+    st.rerun()
 
 conn.close()
 # import streamlit as st
@@ -396,6 +342,7 @@ conn.close()
 #         if abc != "":
 #             cur.execute(f"INSERT INTO todotask{tab}(status, task) VALUES(?, ?);", ('❌',abc))
 #             conn.commit()
+
 
 
 
