@@ -110,9 +110,6 @@ st.markdown(f"""
     <div style="display: flex; justify-content: space-between; align-items: center;">
         <div>
             <h1 style="margin: 0; font-size: 22px;">✅ To Do List</h1>
-            <p style="margin: 5px 0 0 0; font-size: 13px; opacity: 0.9;">
-                ID: {tab[:8]}...
-            </p>
         </div>
         <button onclick="navigator.clipboard.writeText('{st.get_option('server.baseUrlPath') or ''}?user_id={tab}')" 
                 style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); 
@@ -560,6 +557,7 @@ st.markdown("""
 #         if abc != "":
 #             cur.execute(f"INSERT INTO todotask{tab}(status, task) VALUES(?, ?);", ('❌',abc))
 #             conn.commit()
+
 
 
 
