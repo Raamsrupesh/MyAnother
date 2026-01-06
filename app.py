@@ -112,7 +112,7 @@ if len(df) > 0:
             st.rerun()
         
         # Create the horizontal layout - Checkbox, Task, Action Buttons
-        col1, col2, col3, col4 = st.columns([0.5, 8, 1, 0.5])
+        col1, col2, col3, col4 = st.columns([0.5, 4, 1, 0.5])
         
         with col1:
             # Display status indicator
@@ -133,12 +133,12 @@ if len(df) > 0:
         with col3:
             # Toggle status button
             if row['status'] == "✅":
-                if st.button("Mark ❌", key=f"mark_undone_{row['id']}", use_container_width=True):
+                if st.button("Undo", key=f"mark_undone_{row['id']}", use_container_width=True):
                     cur.execute(f'UPDATE "todotask_{tab}" SET status = "❌" WHERE id = ?;', (row['id'],))
                     conn.commit()
                     st.rerun()
             else:
-                if st.button("Mark ✅", key=f"mark_done_{row['id']}", use_container_width=True):
+                if st.button("DONE", key=f"mark_done_{row['id']}", use_container_width=True):
                     cur.execute(f'UPDATE "todotask_{tab}" SET status = "✅" WHERE id = ?;', (row['id'],))
                     conn.commit()
                     st.rerun()
@@ -290,6 +290,7 @@ st.caption("🔒 Your tasks are stored locally and accessible only with your uni
 #         if abc != "":
 #             cur.execute(f"INSERT INTO todotask{tab}(status, task) VALUES(?, ?);", ('❌',abc))
 #             conn.commit()
+
 
 
 
