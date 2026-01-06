@@ -116,33 +116,45 @@ else:
 st.title("To do List/ Groceries list: ")
 st.write("---")
 
+st.markdown("""
+<div class="todo-wrapper">
+  <div class="todo-header">
+    <div class="todo-title">Today&apos;s Focus</div>
+    <div class="todo-pill">To‑Do List</div>
+  </div>
+  <ul class="todo-list">
+""", unsafe_allow_html=True)
+
 df = pd.read_sql(f'SELECT * FROM "todotask{tab}";', con=conn)
 try:
     for j,i in df.iterrows():
-        a, b = st.columns([12,1])
-        with a:
-            if i['status'] == "❌":
-                choice = st.checkbox(f"{i['task']}", value=False, key = f"cb_{i['id']}")
-            elif i['status'] == "✅":
-                choice = st.checkbox(f"{i['task']}", value=True, key = f"cb_{i['id']}")
-            if choice:
-                cur.execute(f'UPDATE "todotask{tab}" SET status = \'✅\' WHERE id = ?;', (i['id'],))
+        st.markdown('<li class="todo-item">', unsafe_allow_html=True)
+        left, right = st.columns([12,3])
+        with left:
+            done = (i['status'] == "✅")
+            choice = st.checkbox(
+                i['task'],
+                value=done,
+                key=f"cb_{i['id']}",
+                label_visibility="visible"
+            )
+            if choice and not done:
+                cur.execute(f'UPDATE "todotask{tab}" SET status = "✅" WHERE id = ?;', (i['id'],))
                 conn.commit()
-            elif not choice:
-                cur.execute(f'UPDATE "todotask{tab}" SET status = \'❌\' WHERE id = ?;', (i['id'],))
+            elif not choice and done:
+                cur.execute(f'UPDATE "todotask{tab}" SET status = "❌" WHERE id = ?;', (i['id'],))
                 conn.commit()
-        with b:
-            if st.button("🗑️", key = f"{j}{i}keytodotask{tab}{str(uuid.uuid1())}"):
-                cur.execute(f'DELETE FROM "todotask{tab}" WHERE id = ?;', (i['id'],))
-                conn.commit()
-                st.rerun()
-        if st.button("Clear ALL"):
-            cur.execute(f'DELETE FROM "todotask{tab}"')
-            conn.commit()
-            st.rerun()
+        with right:
+            st.markdown(
+                f'<span class="todo-badge">#{i["id"]}</span>',
+                unsafe_allow_html=True
+            )
+        st.markdown('</li>', unsafe_allow_html=True)
 except st.errors.StreamlitDuplicateElementId:
     st.error("There are some duplicate elements.")
-    
+
+st.markdown("</ul></div>", unsafe_allow_html=True)
+
 st.write("---")
 with st.form(f"TASK", clear_on_submit=True):
     abc = st.text_input("Enter Task/item: ")
@@ -205,6 +217,7 @@ with st.form(f"TASK", clear_on_submit=True):
 #         if abc != "":
 #             cur.execute(f"INSERT INTO todotask{tab}(status, task) VALUES(?, ?);", ('❌',abc))
 #             conn.commit()
+
 
 
 
