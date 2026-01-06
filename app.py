@@ -2,80 +2,108 @@ import streamlit as st
 import pandas as pd
 import sqlite3
 import uuid
+import time
 
-# Initialize
+# Initialize database
 conn = sqlite3.connect('todotask.db', check_same_thread=False)
 cur = conn.cursor()
 
-# Get user
+# Page config
+st.set_page_config(page_title="To Do List", page_icon="✅")
+
+# Get user ID
 if 'device_uuid' not in st.session_state:
     st.session_state.device_uuid = str(uuid.uuid4())
 tab = st.session_state.device_uuid
 
-# Create table
+# Initialize table
 cur.execute(f'''
-    CREATE TABLE IF NOT EXISTS tasks_{tab} (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        task TEXT,
-        done BOOLEAN DEFAULT 0
+    CREATE TABLE IF NOT EXISTS "todotask_{tab}"(
+        id INTEGER PRIMARY KEY,
+        status TEXT,
+        task TEXT
     )
 ''')
 conn.commit()
 
-st.title("✅ One-Line To Do List")
+# Load tasks
+def load_tasks():
+    try:
+        return pd.read_sql(f'SELECT * FROM "todotask_{tab}" ORDER BY id DESC', conn)
+    except:
+        return pd.DataFrame()
 
-# Add task
-with st.form("add"):
-    task = st.text_input("New task:")
-    if st.form_submit_button("Add") and task:
-        cur.execute(f"INSERT INTO tasks_{tab}(task) VALUES(?)", (task,))
-        conn.commit()
-        st.rerun()
+# === SIMPLE ONE-LINE LAYOUT USING MARKDOWN TABLES ===
+st.title("✅ To Do List")
 
-# Load and display
-df = pd.read_sql(f"SELECT * FROM tasks_{tab}", conn)
-
-if not df.empty:
-    # Use data_editor for compact view
-    edited_df = st.data_editor(
-        df[['task', 'done']],
-        column_config={
-            "done": st.column_config.CheckboxColumn(
-                "Done",
-                help="Mark as done",
-                default=False,
-            ),
-            "task": st.column_config.TextColumn(
-                "Task",
-                help="Your task",
-                required=True,
-            )
-        },
-        hide_index=True,
-        use_container_width=True,
-    )
-    
-    # Update database
-    for idx, row in edited_df.iterrows():
-        original = df.iloc[idx]
-        if row['done'] != original['done']:
-            cur.execute(f"UPDATE tasks_{tab} SET done=? WHERE id=?", 
-                       (row['done'], original['id']))
-    
-    # Delete functionality
-    for idx, row in df.iterrows():
-        if st.button("🗑️", key=f"del_{row['id']}"):
-            cur.execute(f"DELETE FROM tasks_{tab} WHERE id=?", (row['id'],))
+# Add task form
+with st.form("add_form"):
+    new_task = st.text_input("Add new task:")
+    if st.form_submit_button("Add"):
+        if new_task:
+            cur.execute(f'INSERT INTO "todotask_{tab}"(status, task) VALUES("❌", ?)', (new_task,))
             conn.commit()
             st.rerun()
+
+# Load tasks
+df = load_tasks()
+
+if len(df) > 0:
+    # Progress
+    completed = sum(1 for s in df['status'] if s == '✅')
+    total = len(df)
+    st.progress(completed/total if total > 0 else 0)
+    st.caption(f"{completed}/{total} completed")
     
-    if st.button("Clear All"):
-        cur.execute(f"DELETE FROM tasks_{tab}")
+    # Display each task in ONE LINE
+    for idx, row in df.iterrows():
+        # Create a single line using columns
+        col1, col2, col3, col4 = st.columns([1, 8, 1, 1])
+        
+        with col1:
+            # Status indicator
+            if row['status'] == '✅':
+                st.write("✓")
+            else:
+                st.write("○")
+        
+        with col2:
+            # Task text
+            if row['status'] == '✅':
+                st.markdown(f"<span style='text-decoration: line-through; color: gray;'>{row['task']}</span>", 
+                          unsafe_allow_html=True)
+            else:
+                st.write(row['task'])
+        
+        with col3:
+            # Toggle button
+            if row['status'] == '✅':
+                if st.button("❌", key=f"undo_{row['id']}"):
+                    cur.execute(f'UPDATE "todotask_{tab}" SET status="❌" WHERE id=?', (row['id'],))
+                    conn.commit()
+                    st.rerun()
+            else:
+                if st.button("✅", key=f"done_{row['id']}"):
+                    cur.execute(f'UPDATE "todotask_{tab}" SET status="✅" WHERE id=?', (row['id'],))
+                    conn.commit()
+                    st.rerun()
+        
+        with col4:
+            # Delete button
+            if st.button("🗑️", key=f"del_{row['id']}"):
+                cur.execute(f'DELETE FROM "todotask_{tab}" WHERE id=?', (row['id'],))
+                conn.commit()
+                st.rerun()
+    
+    # Clear all
+    if st.button("Clear All Tasks"):
+        cur.execute(f'DELETE FROM "todotask_{tab}"')
         conn.commit()
         st.rerun()
+else:
+    st.info("No tasks yet. Add one above!")
 
 conn.close()
-
 # import streamlit as st
 # import pandas as pd
 # import sqlite3
@@ -368,6 +396,7 @@ conn.close()
 #         if abc != "":
 #             cur.execute(f"INSERT INTO todotask{tab}(status, task) VALUES(?, ?);", ('❌',abc))
 #             conn.commit()
+
 
 
 
