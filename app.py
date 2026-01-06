@@ -31,8 +31,8 @@ for t_id, t_task, t_done in tasks:
     <div style="display: flex; align-items: center; gap: 10px; margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 5px;">
         <span>{'✅' if t_done else '⬜'}</span>
         <span style="flex: 1;{'text-decoration: line-through; color: gray;' if t_done else ''}">{t_task}</span>
-        <a href="?toggle={t_id}&user={user}" style="background: #4CAF50; color: white; padding: 5px 10px; border-radius: 3px; text-decoration: none;">{'❌' if t_done else '✅'}</a>
-        <a href="?delete={t_id}&user={user}" style="background: #f44336; color: white; padding: 5px 10px; border-radius: 3px; text-decoration: none;">🗑️</a>
+        <a href="?toggle={t_id}&user={user}" style="background: #4CAF50; color: black; padding: 5px 10px; border-radius: 3px; text-decoration: none;">{'❌' if t_done else '✅'}</a>
+        <a href="?delete={t_id}&user={user}" style="background: #f44336; color: black; padding: 5px 10px; border-radius: 3px; text-decoration: none;">🗑️</a>
     </div>
     """, unsafe_allow_html=True)
 
@@ -343,6 +343,7 @@ conn.close()
 #         if abc != "":
 #             cur.execute(f"INSERT INTO todotask{tab}(status, task) VALUES(?, ?);", ('❌',abc))
 #             conn.commit()
+
 
 
 
