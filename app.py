@@ -29,6 +29,10 @@ try:
                 cur.execute("DELETE FROM todotask WHERE id = ?;", (i['id'],))
                 conn.commit()
                 st.rerun()
+        if st.button("Clear ALL"):
+            cur.execute("DELETE FROM todotask")
+            conn.commit()
+            st.rerun()
 except st.errors.StreamlitDuplicateElementId:
     st.error("There are some duplicate elements.")
     
@@ -39,6 +43,7 @@ with st.form(f"TASK", clear_on_submit=True):
         if abc != "":
             cur.execute(f"INSERT INTO todotask(status, task) VALUES(?, ?);", ('❌',abc))
             conn.commit()
+
 
 
 
