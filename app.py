@@ -12,18 +12,16 @@ if 'device_uuid' not in st.session_state:
     st.session_state['device_uuid'] = str(uuid.uuid4())
 
 tab = st.session_state['device_uuid']
-try:
-    if st.button("GO"):
-        if tab != "":
+
+if tab != "":
             cur.execute("SELECT name FROM sqlite_master WHERE type = 'table';")
             tables = cur.fetchall()
             st.write(tables)
             cur.execute(f'CREATE TABLE IF NOT EXISTS "todotask{tab}"(id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, status VARCHAR(2) NOT NULL, task VARCHAR(2000) NOT NULL);')
             conn.commit()
-        else:
+else:
             st.warning("It's EMPTY!")
-except:
-    st.warning("Press the GO button")
+
 st.title("To do List/ Groceries list: ")
 st.write("---")
 
@@ -116,6 +114,7 @@ with st.form(f"TASK", clear_on_submit=True):
 #         if abc != "":
 #             cur.execute(f"INSERT INTO todotask{tab}(status, task) VALUES(?, ?);", ('❌',abc))
 #             conn.commit()
+
 
 
 
