@@ -55,6 +55,24 @@ st.markdown("""
     min-width: fit-content !important;
 }
 
+.task-row {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center;
+    width: 100%;
+    margin: 8px 0;
+    padding: 8px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border: 1px solid #e0e0e0;
+}
+
+.task-row > div {
+    flex-shrink: 0 !important;
+}
+
 @media (max-width: 768px) {
     .task-container {
         padding: 10px;
@@ -72,7 +90,12 @@ st.markdown("""
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        max-width: 200px; /* Adjust as needed for mobile */
+        max-width: 150px; /* Adjusted for tighter mobile fit */
+    }
+    
+    .task-row {
+        padding: 6px;
+        margin: 6px 0;
     }
 }
 
@@ -104,19 +127,24 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # HEADER
-# st.markdown(f"""
-# <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-#             color: white; padding: 16px; border-radius: 10px; margin-bottom: 16px;">
-#     <div style="display: flex; justify-content: space-between; align-items: center;">
-
-#         <button onclick="navigator.clipboard.writeText('{st.get_option('server.baseUrlPath') or ''}?user_id={tab}')" 
-#                 style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); 
-#                        padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer;">
-#             📋 Share
-#         </button>
-#     </div>
-# </div>
-# """, unsafe_allow_html=True)
+st.markdown(f"""
+<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            color: white; padding: 16px; border-radius: 10px; margin-bottom: 16px;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h1 style="margin: 0; font-size: 22px;">✅ To Do List</h1>
+            <p style="margin: 5px 0 0 0; font-size: 13px; opacity: 0.9;">
+                ID: {tab[:8]}...
+            </p>
+        </div>
+        <button onclick="navigator.clipboard.writeText('{st.get_option('server.baseUrlPath') or ''}?user_id={tab}')" 
+                style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); 
+                       padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer;">
+            📋 Share
+        </button>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 # Initialize table
 cur.execute(
@@ -139,72 +167,75 @@ def load_tasks():
 df = load_tasks()
 
 # PROGRESS SECTION
-# if len(df) > 0:
-#     completed = df[df['status'] == '✅'].shape[0]
-#     total = len(df)
-#     progress_percent = (completed / total * 100) if total > 0 else 0
-    
-#     col1, col2, col3 = st.columns(3)
-#     with col1:
-#         st.metric("Total", total)
-#     with col2:
-#         st.metric("Done", completed)
-#     with col3:
-#         st.metric("Progress", f"{progress_percent:.0f}%")
-    
-#     st.progress(progress_percent / 100)
-
-# TASKS SECTION - USING STREAMLIT COLUMNS FOR HORIZONTAL LAYOUT
 if len(df) > 0:
-    st.title("📝 Your List")
+    completed = df[df['status'] == '✅'].shape[0]
+    total = len(df)
+    progress_percent = (completed / total * 100) if total > 0 else 0
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Total", total)
+    with col2:
+        st.metric("Done", completed)
+    with col3:
+        st.metric("Progress", f"{progress_percent:.0f}%")
+    
+    st.progress(progress_percent / 100)
+
+# TASKS SECTION - USING FLEX ROW FOR HORIZONTAL ALIGNMENT
+if len(df) > 0:
+    st.markdown("### 📝 Your Tasks")
     
     for index, row in df.iterrows():
         is_completed = row['status'] == "✅"
         
-        # Create a container for the task
-        with st.container():
-            # Adjusted column ratios for better mobile fit: narrower task column
-            col_check, col_task, col_mark, col_delete = st.columns([0.5, 2, 1, 1])
-            
-            with col_check:
-                # Custom checkbox display
-                if is_completed:
-                    st.markdown('<div class="task-checkbox checked">✓</div>', unsafe_allow_html=True)
-                else:
-                    st.markdown('<div class="task-checkbox"></div>', unsafe_allow_html=True)
-            
-            with col_task:
-                # Task text with strikethrough if completed, and truncation for mobile
-                task_class = "task-text"
-                if is_completed:
-                    st.markdown(f"<div class='{task_class}' style='text-decoration: line-through; color: #666;'>{row['task']}</div>", 
-                               unsafe_allow_html=True)
-                else:
-                    st.markdown(f"<div class='{task_class}' style='font-weight: 500;'>{row['task']}</div>", 
-                               unsafe_allow_html=True)
-            
-            with col_mark:
-                # Mark complete/incomplete button
-                if is_completed:
-                    if st.button("❌", key=f"undo_{row['id']}", help="Mark incomplete"):
-                        cur.execute(f'UPDATE "todotask_{tab}" SET status = "❌" WHERE id = ?;', (row['id'],))
-                        conn.commit()
-                        st.rerun()
-                else:
-                    if st.button("✅", key=f"done_{row['id']}", help="Mark complete"):
-                        cur.execute(f'UPDATE "todotask_{tab}" SET status = "✅" WHERE id = ?;', (row['id'],))
-                        conn.commit()
-                        st.rerun()
-            
-            with col_delete:
-                # Delete button
-                if st.button("🗑️", key=f"delete_{row['id']}", help="Delete task"):
-                    cur.execute(f'DELETE FROM "todotask_{tab}" WHERE id = ?;', (row['id'],))
+        # Use a flex row container for horizontal layout
+        st.markdown('<div class="task-row">', unsafe_allow_html=True)
+        
+        # Create 4 columns inside the flex row
+        col_check, col_task, col_mark, col_delete = st.columns([0.5, 2, 1, 1])
+        
+        with col_check:
+            # Custom checkbox display
+            if is_completed:
+                st.markdown('<div class="task-checkbox checked">✓</div>', unsafe_allow_html=True)
+            else:
+                st.markdown('<div class="task-checkbox"></div>', unsafe_allow_html=True)
+        
+        with col_task:
+            # Task text with strikethrough if completed, and truncation for mobile
+            task_class = "task-text"
+            if is_completed:
+                st.markdown(f"<div class='{task_class}' style='text-decoration: line-through; color: #666;'>{row['task']}</div>", 
+                           unsafe_allow_html=True)
+            else:
+                st.markdown(f"<div class='{task_class}' style='font-weight: 500;'>{row['task']}</div>", 
+                           unsafe_allow_html=True)
+        
+        with col_mark:
+            # Mark complete/incomplete button
+            if is_completed:
+                if st.button("❌", key=f"undo_{row['id']}", help="Mark incomplete"):
+                    cur.execute(f'UPDATE "todotask_{tab}" SET status = "❌" WHERE id = ?;', (row['id'],))
                     conn.commit()
                     st.rerun()
-            
-            # Divider
-            st.markdown("---")
+            else:
+                if st.button("✅", key=f"done_{row['id']}", help="Mark complete"):
+                    cur.execute(f'UPDATE "todotask_{tab}" SET status = "✅" WHERE id = ?;', (row['id'],))
+                    conn.commit()
+                    st.rerun()
+        
+        with col_delete:
+            # Delete button
+            if st.button("🗑️", key=f"delete_{row['id']}", help="Delete task"):
+                cur.execute(f'DELETE FROM "todotask_{tab}" WHERE id = ?;', (row['id'],))
+                conn.commit()
+                st.rerun()
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Divider
+        st.markdown("---")
 else:
     st.info("📝 No tasks yet! Add your first task below.")
 
@@ -555,6 +586,7 @@ st.markdown("""
 #         if abc != "":
 #             cur.execute(f"INSERT INTO todotask{tab}(status, task) VALUES(?, ?);", ('❌',abc))
 #             conn.commit()
+
 
 
 
