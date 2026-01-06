@@ -156,7 +156,7 @@ df = load_tasks()
 
 # TASKS SECTION - USING STREAMLIT COLUMNS FOR HORIZONTAL LAYOUT
 if len(df) > 0:
-    st.markdown("### 📝 Your Tasks")
+    st.title("### 📝 Your List")
     
     for index, row in df.iterrows():
         is_completed = row['status'] == "✅"
@@ -555,6 +555,7 @@ st.markdown("""
 #         if abc != "":
 #             cur.execute(f"INSERT INTO todotask{tab}(status, task) VALUES(?, ?);", ('❌',abc))
 #             conn.commit()
+
 
 
 
