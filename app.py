@@ -41,7 +41,7 @@ try:
                 cur.execute(f'UPDATE "todotask{tab}" SET status = \'❌\' WHERE id = ?;', (i['id'],))
                 conn.commit()
         with b:
-            if st.button("🗑️", key = f"{j}{i}keytodotask{tab}{str(uuid.uuid3())}"):
+            if st.button("🗑️", key = f"{j}{i}keytodotask{tab}{str(uuid.uuid1())}"):
                 cur.execute(f'DELETE FROM "todotask{tab}" WHERE id = ?;', (i['id'],))
                 conn.commit()
                 st.rerun()
@@ -114,6 +114,7 @@ with st.form(f"TASK", clear_on_submit=True):
 #         if abc != "":
 #             cur.execute(f"INSERT INTO todotask{tab}(status, task) VALUES(?, ?);", ('❌',abc))
 #             conn.commit()
+
 
 
 
