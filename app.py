@@ -108,9 +108,7 @@ st.markdown(f"""
 <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
             color: white; padding: 16px; border-radius: 10px; margin-bottom: 16px;">
     <div style="display: flex; justify-content: space-between; align-items: center;">
-        # <div>
-        #     <h1 style="margin: 0; font-size: 22px;">✅ To Do List</h1>
-        # </div>
+
         <button onclick="navigator.clipboard.writeText('{st.get_option('server.baseUrlPath') or ''}?user_id={tab}')" 
                 style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); 
                        padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer;">
@@ -557,6 +555,7 @@ st.markdown("""
 #         if abc != "":
 #             cur.execute(f"INSERT INTO todotask{tab}(status, task) VALUES(?, ?);", ('❌',abc))
 #             conn.commit()
+
 
 
 
