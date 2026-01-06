@@ -31,9 +31,9 @@ try:
         a, b = st.columns([12,1])
         with a:
             if i['status'] == "❌":
-                choice = st.checkbox(f"{i['task']}", value=False)
+                choice = st.checkbox(f"{i['task']}", value=False, key = f"cb_{i['id']}")
             elif i['status'] == "✅":
-                choice = st.checkbox(f"{i['task']}", value=True)
+                choice = st.checkbox(f"{i['task']}", value=True, key = f"cb_{i['id']}")
             if choice:
                 cur.execute(f'UPDATE "todotask{tab}" SET status = \'✅\' WHERE id = ?;', (i['id'],))
                 conn.commit()
@@ -114,6 +114,7 @@ with st.form(f"TASK", clear_on_submit=True):
 #         if abc != "":
 #             cur.execute(f"INSERT INTO todotask{tab}(status, task) VALUES(?, ?);", ('❌',abc))
 #             conn.commit()
+
 
 
 
