@@ -5,6 +5,97 @@ import uuid
 
 conn = sqlite3.connect('todotask.db')
 cur = conn.cursor()
+import streamlit as st
+import pandas as pd
+
+glass_css = """
+<style>
+body {
+    background: linear-gradient(135deg, #0f172a, #020617);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.todo-wrapper {
+    max-width: 500px;
+    margin: 40px auto;
+    padding: 24px 28px;
+    border-radius: 24px;
+    background: rgba(15, 23, 42, 0.45);
+    box-shadow: 0 20px 60px rgba(15, 23, 42, 0.7);
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    color: #e5e7eb;
+}
+.todo-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+}
+.todo-title {
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+}
+.todo-pill {
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.7);
+    color: #7dd3fc;
+}
+.todo-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.todo-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    border-radius: 14px;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(30, 64, 175, 0.6);
+}
+.todo-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.todo-checkbox {
+    width: 18px;
+    height: 18px;
+    border-radius: 6px;
+    border: 1px solid rgba(148, 163, 184, 0.8);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: #22c55e;
+}
+.todo-text {
+    font-size: 14px;
+}
+.todo-text.done {
+    text-decoration: line-through;
+    color: #6b7280;
+}
+.todo-badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(56, 189, 248, 0.08);
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    color: #bae6fd;
+}
+</style>
+"""
+st.markdown(glass_css, unsafe_allow_html=True)
 
 # UUID that you decided for this device (from cookie / input / etc.)
 # Example: using a fixed one for now; replace this with your own logic
@@ -114,6 +205,7 @@ with st.form(f"TASK", clear_on_submit=True):
 #         if abc != "":
 #             cur.execute(f"INSERT INTO todotask{tab}(status, task) VALUES(?, ?);", ('❌',abc))
 #             conn.commit()
+
 
 
 
