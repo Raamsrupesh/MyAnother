@@ -41,12 +41,12 @@ params = st.query_params
 if 'toggle' in params:
     cur.execute(f"UPDATE todo_{user} SET done = NOT done WHERE id=?", (params['toggle'],))
     conn.commit()
-    st.query_params.clear()
+    # st.query_params.clear()
     st.rerun()
 if 'delete' in params:
     cur.execute(f"DELETE FROM todo_{user} WHERE id=?", (params['delete'],))
     conn.commit()
-    st.query_params.clear()
+    # st.query_params.clear()
     st.rerun()
 
 conn.close()
@@ -343,6 +343,7 @@ conn.close()
 #         if abc != "":
 #             cur.execute(f"INSERT INTO todotask{tab}(status, task) VALUES(?, ?);", ('❌',abc))
 #             conn.commit()
+
 
 
 
