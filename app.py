@@ -1,55 +1,280 @@
 import streamlit as st
+import pandas as pd
 import sqlite3
 import uuid
 
-# Setup
-conn = sqlite3.connect('todo.db', check_same_thread=False)
+# Initialize database connection
+conn = sqlite3.connect('todotask.db', check_same_thread=False)
 cur = conn.cursor()
 
-# User ID
-if 'user_id' not in st.session_state:
-    st.session_state.user_id = str(uuid.uuid4())[:8]
+# Set page configuration
+st.set_page_config(page_title="To Do List", page_icon="✅", layout="wide")
 
-user = st.session_state.user_id
-cur.execute(f"CREATE TABLE IF NOT EXISTS todo_{user} (id INTEGER PRIMARY KEY, task TEXT, done INTEGER DEFAULT 0)")
+# ----- GLOBAL CSS FOR TASK ROWS -----
+st.markdown("""
+<style>
+.task-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 8px 4px;
+    border-bottom: 1px solid #eee;
+    font-size: 15px;
+}
+.task-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+}
+.task-status {
+    flex-shrink: 0;
+}
+.task-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: bold;
+}
+.task-text-done {
+    color: gray;
+    text-decoration: line-through;
+    font-weight: normal;
+}
+.task-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+.task-btn-ghost {
+    padding: 2px 6px;
+    border-radius: 4px;
+    background-color: #f5f5f5;
+    font-size: 13px;
+}
+</style>
+""", unsafe_allow_html=True)
 
-st.title(f"📝 To Do List - {user}")
+# Generate or retrieve device UUID from session state
+if 'device_uuid' not in st.session_state:
+    query_params = st.query_params
+    if 'user_id' in query_params:
+        st.session_state.device_uuid = query_params['user_id']
+    else:
+        st.session_state.device_uuid = str(uuid.uuid4())
+        st.query_params['user_id'] = st.session_state.device_uuid
 
-# Add
-task = st.text_input("Add task:")
-if st.button("Add") and task:
-    cur.execute(f"INSERT INTO todo_{user}(task) VALUES(?)", (task,))
-    conn.commit()
-    st.rerun()
+tab = st.session_state.device_uuid
 
-# Display - ALL ON ONE LINE
-tasks = cur.execute(f"SELECT * FROM todo_{user}").fetchall()
+# Title and user info
+st.title("✅ Personal To Do List")
 
-for t_id, t_task, t_done in tasks:
-    # ONE LINE using HTML
-    st.markdown(f"""
-    <div style="display: flex; align-items: center; gap: 10px; margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 5px;">
-        <span>{'✅' if t_done else '⬜'}</span>
-        <span style="flex: 1;{'text-decoration: line-through; color: gray;' if t_done else ''}">{t_task}</span>
-        <a href="?toggle={t_id}&user={user}" style="background: #4CAF50; color: white; padding: 5px 10px; border-radius: 3px; text-decoration: none;">{'❌' if t_done else '✅'}</a>
-        <a href="?delete={t_id}&user={user}" style="background: #f44336; color: white; padding: 5px 10px; border-radius: 3px; text-decoration: none;">🗑️</a>
-    </div>
-    """, unsafe_allow_html=True)
+# Sidebar for options
+with st.sidebar:
+    st.markdown(f"**Your ID:** `{tab[:8]}...`")
+    st.title("📊 Options")
 
-# Handle clicks
-params = st.query_params
-if 'toggle' in params:
-    cur.execute(f"UPDATE todo_{user} SET done = NOT done WHERE id=?", (params['toggle'],))
-    conn.commit()
-    st.query_params.clear()
-    st.rerun()
-if 'delete' in params:
-    cur.execute(f"DELETE FROM todo_{user} WHERE id=?", (params['delete'],))
-    conn.commit()
-    st.query_params.clear()
-    st.rerun()
+    # Share link functionality
+    st.subheader("Share Your List")
+    share_url = f"{st.get_option('server.baseUrlPath') or ''}?user_id={tab}"
 
+    if st.button("📋 Copy Share Link"):
+        st.code(share_url, language="text")
+        st.info("Share this URL with someone to let them view/edit your tasks")
+
+    st.markdown("---")
+    st.subheader("📈 Progress")
+
+# Initialize table for this user
+cur.execute(
+    f'CREATE TABLE IF NOT EXISTS "todotask_{tab}"('
+    'id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, '
+    'status VARCHAR(2) NOT NULL, '
+    'task VARCHAR(2000) NOT NULL, '
+    'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);'
+)
+conn.commit()
+
+# Main app functionality
+def load_tasks():
+    """Load tasks from database"""
+    try:
+        df = pd.read_sql(f'SELECT * FROM "todotask_{tab}" ORDER BY created_at DESC;', con=conn)
+        return df
+    except:
+        return pd.DataFrame(columns=['id', 'status', 'task', 'created_at'])
+
+# Display tasks
+df = load_tasks()
+st.markdown("---")
+
+if len(df) > 0:
+    st.subheader("Your Tasks")
+
+    # Clear-all confirmation state
+    if 'show_clear_confirmation' not in st.session_state:
+        st.session_state.show_clear_confirmation = False
+
+    # Per-task loop
+    for index, row in df.iterrows():
+        task_key = f"task_{row['id']}"
+
+        # Session state for delete
+        if task_key not in st.session_state:
+            st.session_state[task_key] = {
+                'id': row['id'],
+                'task': row['task'],
+                'status': row['status'],
+                'delete_clicked': False
+            }
+
+        # Check delete flag
+        if st.session_state[task_key]['delete_clicked']:
+            cur.execute(f'DELETE FROM "todotask_{tab}" WHERE id = ?;', (row['id'],))
+            conn.commit()
+            del st.session_state[task_key]
+            st.rerun()
+
+        # LOGIC BUTTONS (hidden layout; they trigger Python)
+        logic_cols = st.columns([1, 1, 1])
+        with logic_cols[0]:
+            pass  # empty, just to keep structure simple
+
+        with logic_cols[1]:
+            # DONE / Undo button
+            if row['status'] == "✅":
+                if st.button("Undo", key=f"logic_undo_{row['id']}", help="Mark as not done"):
+                    cur.execute(f'UPDATE "todotask_{tab}" SET status = "❌" WHERE id = ?;', (row['id'],))
+                    conn.commit()
+                    st.rerun()
+            else:
+                if st.button("DONE", key=f"logic_done_{row['id']}", help="Mark as done"):
+                    cur.execute(f'UPDATE "todotask_{tab}" SET status = "✅" WHERE id = ?;', (row['id'],))
+                    conn.commit()
+                    st.rerun()
+
+        with logic_cols[2]:
+            # Delete button
+            if st.button("🗑️", key=f"logic_delete_{row['id']}", help="Delete task"):
+                st.session_state[task_key]['delete_clicked'] = True
+                st.rerun()
+
+        # VISUAL ROW (always horizontal with CSS)
+        status_icon = "✅" if row['status'] == "✅" else "⬜"
+        task_class = "task-text task-text-done" if row['status'] == "✅" else "task-text"
+        right_label = "Undo" if row['status'] == "✅" else "DONE"
+
+        st.markdown(
+            f"""
+            <div class="task-row">
+                <div class="task-left">
+                    <span class="task-status">{status_icon}</span>
+                    <span class="{task_class}">{row['task']}</span>
+                </div>
+                <div class="task-actions">
+                    <span class="task-btn-ghost">{right_label}</span>
+                    <span class="task-btn-ghost">🗑️</span>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+else:
+    st.info("✨ No tasks yet! Add your first task below.")
+
+# Clear all tasks button with confirmation
+if len(df) > 0:
+    if not st.session_state.show_clear_confirmation:
+        if st.button("🗑️ Clear All Tasks", type="secondary", use_container_width=True):
+            st.session_state.show_clear_confirmation = True
+            st.rerun()
+    else:
+        st.warning("⚠️ Are you sure you want to delete ALL tasks? This action cannot be undone!")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("✅ Yes, Delete All", type="primary", use_container_width=True):
+                cur.execute(f'DELETE FROM "todotask_{tab}"')
+                conn.commit()
+                st.session_state.show_clear_confirmation = False
+                st.success("All tasks have been cleared!")
+                st.rerun()
+        with col2:
+            if st.button("❌ No, Cancel", type="secondary", use_container_width=True):
+                st.session_state.show_clear_confirmation = False
+                st.rerun()
+
+# Add new task section
+st.subheader("➕ Add New Task")
+with st.form("add_task", clear_on_submit=True):
+    task_input = st.text_input("Enter your task:", placeholder="What needs to be done?")
+
+    col1, col2 = st.columns([1, 4])
+    with col1:
+        submitted = st.form_submit_button("Add Task", use_container_width=True)
+
+    if submitted and task_input.strip() != "":
+        cur.execute(f'INSERT INTO "todotask_{tab}"(status, task) VALUES(?, ?);', ('❌', task_input.strip()))
+        conn.commit()
+        st.success("Task added successfully!")
+        st.rerun()
+    elif submitted and task_input.strip() == "":
+        st.warning("Please enter a task description!")
+
+# Progress section (main area)
+if len(df) > 0:
+    completed = df[df['status'] == '✅'].shape[0]
+    total = len(df)
+    progress_percent = (completed / total * 100) if total > 0 else 0
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Total Tasks", total)
+    with col2:
+        st.metric("Completed", completed)
+    with col3:
+        st.metric("Progress", f"{progress_percent:.1f}%")
+
+    st.progress(progress_percent / 100)
+
+# Sidebar stats
+with st.sidebar:
+    df_updated = load_tasks()
+    completed_updated = df_updated[df_updated['status'] == '✅'].shape[0] if len(df_updated) > 0 else 0
+    total_updated = len(df_updated)
+
+    if total_updated > 0:
+        progress_updated = (completed_updated / total_updated * 100)
+
+        st.markdown(f"""
+        <div style="text-align: center;">
+            <div style="font-size: 24px; font-weight: bold;">{progress_updated:.0f}%</div>
+            <div style="font-size: 14px; color: #666;">Complete</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown(f"**Completed:** {completed_updated}/{total_updated}")
+
+        st.progress(progress_updated / 100)
+
+        col_sb1, col_sb2 = st.columns(2)
+        with col_sb1:
+            st.metric("Total", total_updated)
+        with col_sb2:
+            st.metric("Done", completed_updated)
+    else:
+        st.info("No tasks yet")
+
+# Close database connection
 conn.close()
+
+# Footer
+st.markdown("---")
+st.caption("🔒 Your tasks are stored locally and accessible only with your unique ID")
+
 # import streamlit as st
 # import pandas as pd
 # import sqlite3
@@ -342,6 +567,7 @@ conn.close()
 #         if abc != "":
 #             cur.execute(f"INSERT INTO todotask{tab}(status, task) VALUES(?, ?);", ('❌',abc))
 #             conn.commit()
+
 
 
 
