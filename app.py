@@ -16,7 +16,7 @@ tab = st.session_state['device_uuid']
 if tab != "":
             cur.execute("SELECT name FROM sqlite_master WHERE type = 'table';")
             tables = cur.fetchall()
-            st.write(tables)
+            # st.write(tables)
             cur.execute(f'CREATE TABLE IF NOT EXISTS "todotask{tab}"(id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, status VARCHAR(2) NOT NULL, task VARCHAR(2000) NOT NULL);')
             conn.commit()
 else:
@@ -114,6 +114,7 @@ with st.form(f"TASK", clear_on_submit=True):
 #         if abc != "":
 #             cur.execute(f"INSERT INTO todotask{tab}(status, task) VALUES(?, ?);", ('❌',abc))
 #             conn.commit()
+
 
 
 
