@@ -1,4 +1,19 @@
-# Add this once near the top of the file (after set_page_config)
+# Add this once near the top of the file (after set_page_config)import streamlit as st
+import pandas as pd
+import sqlite3
+import uuid
+
+# Initialize database connection
+conn = sqlite3.connect('todotask.db', check_same_thread=False)
+cur = conn.cursor()
+
+# Set page configuration
+st.set_page_config(
+    page_title="To Do List",
+    page_icon="✅",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
 st.markdown("""
 <style>
 .task-row {
@@ -43,24 +58,6 @@ st.markdown("""
 }
 </style>
 """, unsafe_allow_html=True)
-
-import streamlit as st
-import pandas as pd
-import sqlite3
-import uuid
-
-# Initialize database connection
-conn = sqlite3.connect('todotask.db', check_same_thread=False)
-cur = conn.cursor()
-
-# Set page configuration
-st.set_page_config(
-    page_title="To Do List",
-    page_icon="✅",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
-
 # Generate or retrieve device UUID
 if 'device_uuid' not in st.session_state:
     query_params = st.query_params
@@ -574,6 +571,7 @@ st.markdown("")  # tiny spacer
 #         if abc != "":
 #             cur.execute(f"INSERT INTO todotask{tab}(status, task) VALUES(?, ?);", ('❌',abc))
 #             conn.commit()
+
 
 
 
