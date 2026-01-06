@@ -1,53 +1,78 @@
 import streamlit as st
+import pandas as pd
 import sqlite3
 import uuid
 
-# Setup
-conn = sqlite3.connect('todo.db', check_same_thread=False)
+# Initialize
+conn = sqlite3.connect('todotask.db', check_same_thread=False)
 cur = conn.cursor()
 
-# User ID
-if 'user_id' not in st.session_state:
-    st.session_state.user_id = str(uuid.uuid4())[:8]
+# Get user
+if 'device_uuid' not in st.session_state:
+    st.session_state.device_uuid = str(uuid.uuid4())
+tab = st.session_state.device_uuid
 
-user = st.session_state.user_id
-cur.execute(f"CREATE TABLE IF NOT EXISTS todo_{user} (id INTEGER PRIMARY KEY, task TEXT, done INTEGER DEFAULT 0)")
+# Create table
+cur.execute(f'''
+    CREATE TABLE IF NOT EXISTS tasks_{tab} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        task TEXT,
+        done BOOLEAN DEFAULT 0
+    )
+''')
+conn.commit()
 
-st.title(f"📝 To Do List - {user}")
+st.title("✅ One-Line To Do List")
 
-# Add
-task = st.text_input("Add task:")
-if st.button("Add") and task:
-    cur.execute(f"INSERT INTO todo_{user}(task) VALUES(?)", (task,))
-    conn.commit()
-    st.rerun()
+# Add task
+with st.form("add"):
+    task = st.text_input("New task:")
+    if st.form_submit_button("Add") and task:
+        cur.execute(f"INSERT INTO tasks_{tab}(task) VALUES(?)", (task,))
+        conn.commit()
+        st.rerun()
 
-# Display - ALL ON ONE LINE
-tasks = cur.execute(f"SELECT * FROM todo_{user}").fetchall()
+# Load and display
+df = pd.read_sql(f"SELECT * FROM tasks_{tab}", conn)
 
-for t_id, t_task, t_done in tasks:
-    # ONE LINE using HTML
-    st.markdown(f"""
-    <div style="display: flex; align-items: center; gap: 10px; margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 5px;">
-        <span>{'✅' if t_done else '⬜'}</span>
-        <span style="flex: 1;{'text-decoration: line-through; color: gray;' if t_done else ''}">{t_task}</span>
-        <a href="?toggle={t_id}&user={user}" style="background: #4CAF50; color: black; padding: 5px 10px; border-radius: 3px; text-decoration: none;">{'❌' if t_done else '✅'}</a>
-        <a href="?delete={t_id}&user={user}" style="background: #f44336; color: black; padding: 5px 10px; border-radius: 3px; text-decoration: none;">🗑️</a>
-    </div>
-    """, unsafe_allow_html=True)
-
-# Handle clicks
-params = st.query_params
-if 'toggle' in params:
-    cur.execute(f"UPDATE todo_{user} SET done = NOT done WHERE id=?", (params['toggle'],))
-    conn.commit()
-    # st.query_params.clear()
-    st.rerun()
-if 'delete' in params:
-    cur.execute(f"DELETE FROM todo_{user} WHERE id=?", (params['delete'],))
-    conn.commit()
-    # st.query_params.clear()
-    st.rerun()
+if not df.empty:
+    # Use data_editor for compact view
+    edited_df = st.data_editor(
+        df[['task', 'done']],
+        column_config={
+            "done": st.column_config.CheckboxColumn(
+                "Done",
+                help="Mark as done",
+                default=False,
+            ),
+            "task": st.column_config.TextColumn(
+                "Task",
+                help="Your task",
+                required=True,
+            )
+        },
+        hide_index=True,
+        use_container_width=True,
+    )
+    
+    # Update database
+    for idx, row in edited_df.iterrows():
+        original = df.iloc[idx]
+        if row['done'] != original['done']:
+            cur.execute(f"UPDATE tasks_{tab} SET done=? WHERE id=?", 
+                       (row['done'], original['id']))
+    
+    # Delete functionality
+    for idx, row in df.iterrows():
+        if st.button("🗑️", key=f"del_{row['id']}"):
+            cur.execute(f"DELETE FROM tasks_{tab} WHERE id=?", (row['id'],))
+            conn.commit()
+            st.rerun()
+    
+    if st.button("Clear All"):
+        cur.execute(f"DELETE FROM tasks_{tab}")
+        conn.commit()
+        st.rerun()
 
 conn.close()
 
@@ -343,6 +368,7 @@ conn.close()
 #         if abc != "":
 #             cur.execute(f"INSERT INTO todotask{tab}(status, task) VALUES(?, ?);", ('❌',abc))
 #             conn.commit()
+
 
 
 
