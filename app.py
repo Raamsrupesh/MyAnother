@@ -1,3 +1,49 @@
+# Add this once near the top of the file (after set_page_config)
+st.markdown("""
+<style>
+.task-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 6px 4px;
+    border-bottom: 1px solid #eee;
+    font-size: 15px;
+}
+.task-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0; /* allow text to shrink */
+}
+.task-status {
+    flex-shrink: 0;
+}
+.task-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.task-text-done {
+    color: gray;
+    text-decoration: line-through;
+}
+.task-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+.task-btn {
+    padding: 2px 6px;
+    border-radius: 4px;
+    background-color: #f0f0f0;
+    font-size: 13px;
+}
+</style>
+""", unsafe_allow_html=True)
+
 import streamlit as st
 import pandas as pd
 import sqlite3
@@ -193,107 +239,49 @@ if len(df) > 0:
         st.markdown('<div class="task-row">', unsafe_allow_html=True)
         
         # Create 4 columns inside the flex row
-        col_check, col_task, col_mark, col_delete = st.columns([0.5, 2, 1, 1])
-        
-        with col_check:
-            # Custom checkbox display
-            if is_completed:
-                st.markdown('<div class="task-checkbox checked">✓</div>', unsafe_allow_html=True)
-            else:
-                st.markdown('<div class="task-checkbox"></div>', unsafe_allow_html=True)
-        
-        with col_task:
-            # Task text with strikethrough if completed, and truncation for mobile
-            task_class = "task-text"
-            if is_completed:
-                st.markdown(f"<div class='{task_class}' style='text-decoration: line-through; color: #666;'>{row['task']}</div>", 
-                           unsafe_allow_html=True)
-            else:
-                st.markdown(f"<div class='{task_class}' style='font-weight: 500;'>{row['task']}</div>", 
-                           unsafe_allow_html=True)
-        
-        with col_mark:
-            # Mark complete/incomplete button
-            if is_completed:
-                if st.button("❌", key=f"undo_{row['id']}", help="Mark incomplete"):
-                    cur.execute(f'UPDATE "todotask_{tab}" SET status = "❌" WHERE id = ?;', (row['id'],))
-                    conn.commit()
-                    st.rerun()
-            else:
-                if st.button("✅", key=f"done_{row['id']}", help="Mark complete"):
-                    cur.execute(f'UPDATE "todotask_{tab}" SET status = "✅" WHERE id = ?;', (row['id'],))
-                    conn.commit()
-                    st.rerun()
-        
-        with col_delete:
-            # Delete button
-            if st.button("🗑️", key=f"delete_{row['id']}", help="Delete task"):
-                cur.execute(f'DELETE FROM "todotask_{tab}" WHERE id = ?;', (row['id'],))
-                conn.commit()
-                st.rerun()
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # Divider
-        st.markdown("---")
-else:
-    st.info("📝 No tasks yet! Add your first task below.")
+# BUTTON LOGIC (kept as real buttons so Python can run)
+c1, c2, c3 = st.columns([1, 1, 1])
 
-# ADD TASK FORM
-st.markdown("### ➕ Add New Task")
-with st.form("add_task", clear_on_submit=True):
-    col_input, col_button = st.columns([3, 1])
-    
-    with col_input:
-        task_input = st.text_input(
-            "Task description:",
-            placeholder="What needs to be done?",
-            label_visibility="collapsed"
-        )
-    
-    with col_button:
-        submitted = st.form_submit_button("Add", use_container_width=True)
-    
-    if submitted and task_input.strip() != "":
-        cur.execute(f'INSERT INTO "todotask_{tab}"(status, task) VALUES(?, ?);', ('❌', task_input.strip()))
-        conn.commit()
-        st.rerun()
-    elif submitted and task_input.strip() == "":
-        st.warning("Please enter a task")
-
-# CLEAR ALL BUTTON
-if len(df) > 0:
-    st.markdown("---")
-    
-    if 'show_clear_confirmation' not in st.session_state:
-        st.session_state.show_clear_confirmation = False
-    
-    if not st.session_state.show_clear_confirmation:
-        if st.button("🗑️ Clear All Tasks", type="secondary", use_container_width=True):
-            st.session_state.show_clear_confirmation = True
+with c2:
+    # DONE / Undo
+    if row['status'] == "✅":
+        if st.button("Undo", key=f"mark_undone_{row['id']}"):
+            cur.execute(f'UPDATE "todotask_{tab}" SET status = "❌" WHERE id = ?;', (row['id'],))
+            conn.commit()
             st.rerun()
     else:
-        st.warning("Delete ALL tasks? This cannot be undone!")
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("✅ Yes", type="primary", use_container_width=True):
-                cur.execute(f'DELETE FROM "todotask_{tab}"')
-                conn.commit()
-                st.session_state.show_clear_confirmation = False
-                st.rerun()
-        with col2:
-            if st.button("❌ No", type="secondary", use_container_width=True):
-                st.session_state.show_clear_confirmation = False
-                st.rerun()
+        if st.button("DONE", key=f"mark_done_{row['id']}"):
+            cur.execute(f'UPDATE "todotask_{tab}" SET status = "✅" WHERE id = ?;', (row['id'],))
+            conn.commit()
+            st.rerun()
 
-conn.close()
+with c3:
+    if st.button("🗑️", key=f"delete_{row['id']}"):
+        st.session_state[task_key]['delete_clicked'] = True
+        st.rerun()
 
-# FOOTER
-st.markdown("""
-<div style="text-align: center; color: #666; font-size: 12px; padding: 20px;">
-    🔒 Tasks saved locally • 📱 Mobile-friendly • 🔗 Share with link
-</div>
-""", unsafe_allow_html=True)
+# VISUAL ROW (always one line on mobile)
+status_icon = "✅" if row['status'] == "✅" else "⬜"
+task_class = "task-text task-text-done" if row['status'] == "✅" else "task-text"
+
+st.markdown(
+    f"""
+    <div class="task-row">
+        <div class="task-left">
+            <span class="task-status">{status_icon}</span>
+            <span class="{task_class}">{row['task']}</span>
+        </div>
+        <div class="task-actions">
+            <span class="task-btn">{'Undo' if row['status'] == '✅' else 'DONE'}</span>
+            <span class="task-btn">🗑️</span>
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+st.markdown("")  # tiny spacer
+
 # import streamlit as st
 # import pandas as pd
 # import sqlite3
@@ -586,6 +574,7 @@ st.markdown("""
 #         if abc != "":
 #             cur.execute(f"INSERT INTO todotask{tab}(status, task) VALUES(?, ?);", ('❌',abc))
 #             conn.commit()
+
 
 
 
