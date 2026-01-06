@@ -26,43 +26,65 @@ if 'device_uuid' not in st.session_state:
 
 tab = st.session_state.device_uuid
 
-# CSS to force everything on ONE LINE
+# Simple CSS for mobile optimization
 st.markdown("""
 <style>
-/* Force single line layout */
-.task-row-container {
-    display: flex !important;
-    flex-direction: row !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    width: 100% !important;
+/* Mobile-first design */
+.task-container {
     background: white;
     border-radius: 10px;
-    padding: 12px 15px;
+    padding: 12px;
     margin: 8px 0;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     border: 1px solid #e0e0e0;
-    flex-wrap: nowrap !important;
-    white-space: nowrap !important;
 }
 
-.task-row-container.completed {
+.completed-task {
     background: #f8f9fa;
     opacity: 0.9;
 }
 
-/* Left side: Checkbox + Task */
-.task-left {
-    display: flex !important;
-    align-items: center !important;
-    gap: 10px;
-    flex: 1;
-    min-width: 0; /* Allows text truncation */
+.stButton > button {
+    min-height: 36px;
+    padding: 0 12px;
+    font-size: 14px;
 }
 
-/* Checkbox */
+/* Ensure buttons don't wrap on mobile */
+[data-testid="column"] {
+    min-width: fit-content !important;
+}
+
+@media (max-width: 768px) {
+    .task-container {
+        padding: 10px;
+        margin: 6px 0;
+    }
+    
+    .mobile-compact .stButton > button {
+        min-width: 40px;
+        padding: 0 8px;
+        font-size: 12px;
+    }
+    
+    /* Make task text compact on mobile */
+    .task-text {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 200px; /* Adjust as needed for mobile */
+    }
+}
+
+/* Checkbox styling */
+.checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+
 .task-checkbox {
-    flex-shrink: 0;
     width: 20px;
     height: 20px;
     border-radius: 50%;
@@ -73,94 +95,10 @@ st.markdown("""
     font-size: 12px;
 }
 
-.task-checkbox.checked {
+.checked {
     background: #4CAF50;
     border-color: #4CAF50;
     color: white;
-}
-
-/* Task text - will truncate if too long */
-.task-text {
-    flex: 1;
-    font-size: 16px;
-    color: #333;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    margin: 0 !important;
-}
-
-.task-text.completed {
-    color: #666;
-    text-decoration: line-through;
-}
-
-/* Right side: Buttons */
-.task-right {
-    display: flex !important;
-    align-items: center !important;
-    gap: 8px;
-    flex-shrink: 0;
-}
-
-/* Small compact buttons */
-.compact-btn {
-    min-width: 40px !important;
-    height: 36px !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    border-radius: 6px !important;
-    font-size: 14px !important;
-}
-
-/* Make sure Streamlit buttons are inline */
-.stButton {
-    display: inline-block !important;
-    margin: 0 !important;
-    padding: 0 !important;
-}
-
-/* For mobile screens */
-@media (max-width: 768px) {
-    .task-row-container {
-        padding: 10px 12px;
-    }
-    
-    .compact-btn {
-        min-width: 36px !important;
-        height: 32px !important;
-        font-size: 13px !important;
-    }
-    
-    .task-text {
-        font-size: 15px;
-    }
-}
-
-/* For very small screens */
-@media (max-width: 480px) {
-    .task-row-container {
-        padding: 8px 10px;
-    }
-    
-    .task-left {
-        gap: 8px;
-    }
-    
-    .task-checkbox {
-        width: 18px;
-        height: 18px;
-    }
-    
-    .task-text {
-        font-size: 14px;
-    }
-    
-    .compact-btn {
-        min-width: 34px !important;
-        height: 30px !important;
-        font-size: 12px !important;
-    }
 }
 </style>
 """, unsafe_allow_html=True)
@@ -221,72 +159,74 @@ if len(df) > 0:
     
     st.progress(progress_percent / 100)
 
-# TASKS SECTION - EVERYTHING ON ONE LINE
+# TASKS SECTION - USING STREAMLIT COLUMNS FOR HORIZONTAL LAYOUT
 if len(df) > 0:
     st.markdown("### 📝 Your Tasks")
     
     for index, row in df.iterrows():
         is_completed = row['status'] == "✅"
         
-        # Create the HTML container for one line
-        st.markdown(f'''
-        <div class="task-row-container {'completed' if is_completed else ''}">
-            <div class="task-left">
-                <div class="task-checkbox {'checked' if is_completed else ''}">
-                    {'✓' if is_completed else ''}
-                </div>
-                <div class="task-text {'completed' if is_completed else ''}">
-                    {row['task']}
-                </div>
-            </div>
-            <div class="task-right">
-        ''', unsafe_allow_html=True)
-        
-        # Now add the buttons INSIDE the HTML container
-        # We need to place them in the same line
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # Mark button
-            if is_completed:
-                if st.button("❌", key=f"undo_{row['id']}", help="Mark incomplete", 
-                           use_container_width=True, type="primary"):
-                    cur.execute(f'UPDATE "todotask_{tab}" SET status = "❌" WHERE id = ?;', (row['id'],))
+        # Create a container for the task
+        with st.container():
+            # Adjusted column ratios for better mobile fit: narrower task column
+            col_check, col_task, col_mark, col_delete = st.columns([0.5, 2, 1, 1])
+            
+            with col_check:
+                # Custom checkbox display
+                if is_completed:
+                    st.markdown('<div class="task-checkbox checked">✓</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown('<div class="task-checkbox"></div>', unsafe_allow_html=True)
+            
+            with col_task:
+                # Task text with strikethrough if completed, and truncation for mobile
+                task_class = "task-text"
+                if is_completed:
+                    st.markdown(f"<div class='{task_class}' style='text-decoration: line-through; color: #666;'>{row['task']}</div>", 
+                               unsafe_allow_html=True)
+                else:
+                    st.markdown(f"<div class='{task_class}' style='font-weight: 500;'>{row['task']}</div>", 
+                               unsafe_allow_html=True)
+            
+            with col_mark:
+                # Mark complete/incomplete button
+                if is_completed:
+                    if st.button("❌", key=f"undo_{row['id']}", help="Mark incomplete"):
+                        cur.execute(f'UPDATE "todotask_{tab}" SET status = "❌" WHERE id = ?;', (row['id'],))
+                        conn.commit()
+                        st.rerun()
+                else:
+                    if st.button("✅", key=f"done_{row['id']}", help="Mark complete"):
+                        cur.execute(f'UPDATE "todotask_{tab}" SET status = "✅" WHERE id = ?;', (row['id'],))
+                        conn.commit()
+                        st.rerun()
+            
+            with col_delete:
+                # Delete button
+                if st.button("🗑️", key=f"delete_{row['id']}", help="Delete task"):
+                    cur.execute(f'DELETE FROM "todotask_{tab}" WHERE id = ?;', (row['id'],))
                     conn.commit()
                     st.rerun()
-            else:
-                if st.button("✅", key=f"done_{row['id']}", help="Mark complete", 
-                           use_container_width=True, type="primary"):
-                    cur.execute(f'UPDATE "todotask_{tab}" SET status = "✅" WHERE id = ?;', (row['id'],))
-                    conn.commit()
-                    st.rerun()
-        
-        with col2:
-            # Delete button
-            if st.button("🗑️", key=f"delete_{row['id']}", help="Delete task", 
-                       use_container_width=True, type="secondary"):
-                cur.execute(f'DELETE FROM "todotask_{tab}" WHERE id = ?;', (row['id'],))
-                conn.commit()
-                st.rerun()
-        
-        # Close the HTML container
-        st.markdown('</div></div>', unsafe_allow_html=True)
-        
-        # Add a small gap between tasks
-        st.markdown('<div style="height: 8px;"></div>', unsafe_allow_html=True)
+            
+            # Divider
+            st.markdown("---")
 else:
     st.info("📝 No tasks yet! Add your first task below.")
 
 # ADD TASK FORM
 st.markdown("### ➕ Add New Task")
 with st.form("add_task", clear_on_submit=True):
-    task_input = st.text_input(
-        "Task description:",
-        placeholder="What needs to be done?",
-        label_visibility="collapsed"
-    )
+    col_input, col_button = st.columns([3, 1])
     
-    submitted = st.form_submit_button("Add Task", use_container_width=True)
+    with col_input:
+        task_input = st.text_input(
+            "Task description:",
+            placeholder="What needs to be done?",
+            label_visibility="collapsed"
+        )
+    
+    with col_button:
+        submitted = st.form_submit_button("Add", use_container_width=True)
     
     if submitted and task_input.strip() != "":
         cur.execute(f'INSERT INTO "todotask_{tab}"(status, task) VALUES(?, ?);', ('❌', task_input.strip()))
@@ -620,6 +560,7 @@ st.markdown("""
 #         if abc != "":
 #             cur.execute(f"INSERT INTO todotask{tab}(status, task) VALUES(?, ?);", ('❌',abc))
 #             conn.commit()
+
 
 
 
