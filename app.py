@@ -1,705 +1,295 @@
 import streamlit as st
-st.markdown("""<!DOCTYPE html>
-<html lang="en">
+import pandas as pd
+import sqlite3
+import uuid
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>To Do List</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+# Initialize database connection
+conn = sqlite3.connect('todotask.db', check_same_thread=False)
+cur = conn.cursor()
 
-        body {
-            font-family: Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
+# Set page configuration
+st.set_page_config(page_title="To Do List", page_icon="✅", layout="wide")
 
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-        }
+# Generate or retrieve device UUID from session state
+if 'device_uuid' not in st.session_state:
+    # Try to get from query params first (for sharing links)
+    query_params = st.query_params
+    if 'user_id' in query_params:
+        st.session_state.device_uuid = query_params['user_id']
+    else:
+        # Generate new UUID
+        st.session_state.device_uuid = str(uuid.uuid4())
+        # Store in query params for persistence
+        st.query_params['user_id'] = st.session_state.device_uuid
 
-        h1 {
-            color: #333;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+tab = st.session_state.device_uuid
 
-        .user-id {
-            background: #f0f0f0;
-            padding: 5px 10px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-family: monospace;
-            color: #666;
-        }
+# Title and user info
+st.title("✅ Personal To Do List")
+st.markdown(f"**Your ID:** `{tab[:8]}...`")
 
-        .add-form {
-            display: flex;
-            gap: 10px;
-            margin: 20px 0;
-        }
+# Sidebar for options
+with st.sidebar:
+    st.title("📊 Options")
+    
+    # Share link functionality
+    st.subheader("Share Your List")
+    share_url = f"{st.get_option('server.baseUrlPath') or ''}?user_id={tab}"
+    
+    if st.button("📋 Copy Share Link"):
+        st.code(share_url, language="text")
+        st.info("Share this URL with someone to let them view/edit your tasks")
+    
+    st.markdown("---")
+    
+    # Progress statistics
+    st.subheader("📈 Progress")
 
-        .task-input {
-            flex: 1;
-            padding: 12px;
-            border: 2px solid #ddd;
-            border-radius: 6px;
-            font-size: 16px;
-        }
+# Initialize table for this user
+cur.execute(
+    f'CREATE TABLE IF NOT EXISTS "todotask_{tab}"('
+    'id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, '
+    'status VARCHAR(2) NOT NULL, '
+    'task VARCHAR(2000) NOT NULL, '
+    'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);'
+)
+conn.commit()
 
-        .add-btn {
-            background: #4CAF50;
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
-        }
+# Main app functionality
+def load_tasks():
+    """Load tasks from database"""
+    try:
+        df = pd.read_sql(f'SELECT * FROM "todotask_{tab}" ORDER BY created_at DESC;', con=conn)
+        return df
+    except:
+        return pd.DataFrame(columns=['id', 'status', 'task', 'created_at'])
 
-        .task-list {
-            margin-top: 20px;
-        }
+# Display tasks
+df = load_tasks()
+st.markdown("---")
 
-        /* ONE LINE TASK ROW */
-        .task-row {
-            display: flex;
-            align-items: center;
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 12px 15px;
-            margin: 10px 0;
-            border: 1px solid #e9ecef;
-            gap: 10px;
-        }
-
-        .task-checkbox {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            border: 2px solid #adb5bd;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            flex-shrink: 0;
-        }
-
-        .task-checkbox.checked {
-            background: #4CAF50;
-            border-color: #4CAF50;
-            color: white;
-        }
-
-        .task-text {
-            flex: 1;
-            font-size: 16px;
-            color: #333;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .task-text.completed {
-            text-decoration: line-through;
-            color: #6c757d;
-        }
-
-        .task-buttons {
-            display: flex;
-            gap: 8px;
-            flex-shrink: 0;
-        }
-
-        .btn {
-            padding: 6px 12px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            min-width: 40px;
-        }
-
-        .toggle-btn {
-            background: #007bff;
-            color: white;
-        }
-
-        .delete-btn {
-            background: #dc3545;
-            color: white;
-        }
-
-        .clear-all {
-            background: #6c757d;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            margin-top: 20px;
-            width: 100%;
-            font-size: 16px;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 40px 20px;
-            color: #6c757d;
-        }
-
-        .progress-bar {
-            height: 6px;
-            background: #e9ecef;
-            border-radius: 3px;
-            margin: 15px 0;
-            overflow: hidden;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: #4CAF50;
-            width: 0%;
-            transition: width 0.3s;
-        }
-
-        .stats {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
-            font-size: 14px;
-            color: #666;
-        }
-
-        @media (max-width: 600px) {
-            .container {
-                padding: 15px;
+if len(df) > 0:
+    # Task counters
+    completed = df[df['status'] == '✅'].shape[0]
+    total = len(df)
+    
+    # Calculate progress percentage
+    progress_percent = (completed / total * 100) if total > 0 else 0
+    
+    # Display progress in main area and sidebar
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Total Tasks", total)
+    with col2:
+        st.metric("Completed", completed)
+    with col3:
+        st.metric("Progress", f"{progress_percent:.1f}%")
+    
+    # Progress bar
+    st.progress(progress_percent / 100)
+    
+    st.subheader(f"Your Tasks")
+    
+    # Use a custom layout with session state for delete operations
+    for index, row in df.iterrows():
+        # Create a unique key for each task row
+        task_key = f"task_{row['id']}"
+        
+        # Store task info in session state if not present
+        if task_key not in st.session_state:
+            st.session_state[task_key] = {
+                'id': row['id'],
+                'task': row['task'],
+                'status': row['status'],
+                'delete_clicked': False
             }
+        
+        # Check if delete was clicked
+        if st.session_state[task_key]['delete_clicked']:
+            cur.execute(f'DELETE FROM "todotask_{tab}" WHERE id = ?;', (row['id'],))
+            conn.commit()
+            del st.session_state[task_key]  # Remove from session state
+            st.rerun()
+        
+        # Create the horizontal layout - Checkbox, Task, Action Buttons
+        col1, col2, col3, col4 = st.columns([0.5, 4, 1, 0.5])
+        
+        with col1:
+            # Display status indicator
+            if row['status'] == "✅":
+                st.markdown("<div style='text-align: center;'>✅</div>", unsafe_allow_html=True)
+            else:
+                st.markdown("<div style='text-align: center;'>⬜</div>", unsafe_allow_html=True)
+        
+        with col2:
+            # Display task text
+            if row['status'] == "✅":
+                st.markdown(f"<div style='color: gray; text-decoration: line-through; padding: 5px;'>{row['task']}</div>", 
+                           unsafe_allow_html=True)
+            else:
+                st.markdown(f"<div style='font-weight: bold; padding: 5px;'>{row['task']}</div>", 
+                           unsafe_allow_html=True)
+        
+        with col3:
+            # Toggle status button
+            if row['status'] == "✅":
+                if st.button("Undo", key=f"mark_undone_{row['id']}", use_container_width=True):
+                    cur.execute(f'UPDATE "todotask_{tab}" SET status = "❌" WHERE id = ?;', (row['id'],))
+                    conn.commit()
+                    st.rerun()
+            else:
+                if st.button("DONE", key=f"mark_done_{row['id']}", use_container_width=True):
+                    cur.execute(f'UPDATE "todotask_{tab}" SET status = "✅" WHERE id = ?;', (row['id'],))
+                    conn.commit()
+                    st.rerun()
+        
+        with col4:
+            # Delete button with confirmation
+            if st.button("🗑️", key=f"delete_{row['id']}", use_container_width=True):
+                st.session_state[task_key]['delete_clicked'] = True
+                st.rerun()
+        
+        st.markdown("---")
+else:
+    st.info("✨ No tasks yet! Add your first task below.")
 
-            .task-row {
-                padding: 10px 12px;
-            }
+# Add new task section
+st.subheader("➕ Add New Task")
+with st.form("add_task", clear_on_submit=True):
+    task_input = st.text_input("Enter your task:", placeholder="What needs to be done?")
+    
+    col1, col2 = st.columns([1, 4])
+    with col1:
+        submitted = st.form_submit_button("Add Task", use_container_width=True)
+    
+    if submitted and task_input.strip() != "":
+        cur.execute(f'INSERT INTO "todotask_{tab}"(status, task) VALUES(?, ?);', ('❌', task_input.strip()))
+        conn.commit()
+        st.success("Task added successfully!")
+        st.rerun()
+    elif submitted and task_input.strip() == "":
+        st.warning("Please enter a task description!")
 
-            .btn {
-                min-width: 35px;
-                padding: 5px 8px;
-                font-size: 13px;
-            }
-        }
-    </style>
-</head>
+# Clear all tasks button with confirmation
+if len(df) > 0:
+    st.markdown("---")
+    st.subheader("⚙️ Manage Tasks")
+    
+    # Initialize clear confirmation in session state
+    if 'show_clear_confirmation' not in st.session_state:
+        st.session_state.show_clear_confirmation = False
+    
+    if not st.session_state.show_clear_confirmation:
+        if st.button("🗑️ Clear All Tasks", type="secondary", use_container_width=True):
+            st.session_state.show_clear_confirmation = True
+            st.rerun()
+    else:
+        st.warning("⚠️ Are you sure you want to delete ALL tasks? This action cannot be undone!")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("✅ Yes, Delete All", type="primary", use_container_width=True):
+                cur.execute(f'DELETE FROM "todotask_{tab}"')
+                conn.commit()
+                st.session_state.show_clear_confirmation = False
+                st.success("All tasks have been cleared!")
+                st.rerun()
+        with col2:
+            if st.button("❌ No, Cancel", type="secondary", use_container_width=True):
+                st.session_state.show_clear_confirmation = False
+                st.rerun()
 
-<body>
-    <div class="container">
-        <h1>
-            ✅ To Do List
-            <span class="user-id" id="userId">USER_ID</span>
-        </h1>
-
-        <div class="add-form">
-            <input type="text" class="task-input" id="taskInput" placeholder="What needs to be done?">
-            <button class="add-btn" onclick="addTask()">Add Task</button>
+# Update sidebar statistics after all operations
+with st.sidebar:
+    # Reload data for accurate stats
+    df_updated = load_tasks()
+    completed_updated = df_updated[df_updated['status'] == '✅'].shape[0] if len(df_updated) > 0 else 0
+    total_updated = len(df_updated)
+    
+    if total_updated > 0:
+        progress_updated = (completed_updated / total_updated * 100)
+        
+        # Progress circle visualization
+        st.markdown(f"""
+        <div style="text-align: center;">
+            <div style="font-size: 24px; font-weight: bold;">{progress_updated:.0f}%</div>
+            <div style="font-size: 14px; color: #666;">Complete</div>
         </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown(f"**Completed:** {completed_updated}/{total_updated}")
+        
+        # Mini progress bar
+        st.progress(progress_updated / 100)
+        
+        # Stats
+        col_sb1, col_sb2 = st.columns(2)
+        with col_sb1:
+            st.metric("Total", total_updated)
+        with col_sb2:
+            st.metric("Done", completed_updated)
+    else:
+        st.info("No tasks yet")
 
-        <div class="stats">
-            <span id="progressText">0/0 completed</span>
-            <span id="progressPercent">0%</span>
-        </div>
-        <div class="progress-bar">
-            <div class="progress-fill" id="progressFill"></div>
-        </div>
+# Close database connection
+conn.close()
 
-        <div class="task-list" id="taskList">
-            Tasks will appear here
-        </div>
+# Footer
+st.markdown("---")
+st.caption("🔒 Your tasks are stored locally and accessible only with your unique ID")
 
-        <button class="clear-all" onclick="clearAllTasks()">🗑️ Clear All Tasks</button>
-    </div>
-
-    <script>
-        // Generate user ID
-        let userId = localStorage.getItem('todo_user_id');
-        if (!userId) {
-            userId = 'user_' + Math.random().toString(36).substr(2, 9);
-            localStorage.setItem('todo_user_id', userId);
-        }
-        document.getElementById('userId').textContent = userId;
-
-        // Load tasks from localStorage
-        let tasks = JSON.parse(localStorage.getItem('tasks_' + userId)) || [];
-
-        // Save tasks to localStorage
-        function saveTasks() {
-            localStorage.setItem('tasks_' + userId, JSON.stringify(tasks));
-            renderTasks();
-        }
-
-        // Add new task
-        function addTask() {
-            const input = document.getElementById('taskInput');
-            const text = input.value.trim();
-
-            if (text) {
-                tasks.push({
-                    id: Date.now(),
-                    text: text,
-                    completed: false
-                });
-                input.value = '';
-                saveTasks();
-            }
-        }
-
-        // Toggle task completion
-        function toggleTask(id) {
-            const task = tasks.find(t => t.id === id);
-            if (task) {
-                task.completed = !task.completed;
-                saveTasks();
-            }
-        }
-
-        // Delete task
-        function deleteTask(id) {
-            tasks = tasks.filter(t => t.id !== id);
-            saveTasks();
-        }
-
-        // Clear all tasks
-        function clearAllTasks() {
-            if (tasks.length > 0 && confirm('Are you sure you want to delete all tasks?')) {
-                tasks = [];
-                saveTasks();
-            }
-        }
-
-        // Render tasks
-        function renderTasks() {
-            const taskList = document.getElementById('taskList');
-            const progressText = document.getElementById('progressText');
-            const progressPercent = document.getElementById('progressPercent');
-            const progressFill = document.getElementById('progressFill');
-
-            if (tasks.length === 0) {
-                taskList.innerHTML = `
-                    <div class="empty-state">
-                        <p>📝 No tasks yet!</p>
-                        <p style="margin-top: 10px; font-size: 14px;">Add your first task above</p>
-                    </div>
-                `;
-                progressText.textContent = '0/0 completed';
-                progressPercent.textContent = '0%';
-                progressFill.style.width = '0%';
-                return;
-            }
-
-            // Calculate progress
-            const completed = tasks.filter(t => t.completed).length;
-            const total = tasks.length;
-            const percent = Math.round((completed / total) * 100);
-
-            progressText.textContent = `${completed}/${total} completed`;
-            progressPercent.textContent = `${percent}%`;
-            progressFill.style.width = `${percent}%`;
-
-            // Render tasks
-            let html = '';
-            tasks.forEach(task => {
-                html += `
-                    <div class="task-row">
-                        <div class="task-checkbox ${task.completed ? 'checked' : ''}" 
-                             onclick="toggleTask(${task.id})">
-                            ${task.completed ? '✓' : ''}
-                        </div>
-                        <div class="task-text ${task.completed ? 'completed' : ''}">
-                            ${task.text}
-                        </div>
-                        <div class="task-buttons">
-                            <button class="btn toggle-btn" onclick="toggleTask(${task.id})">
-                                ${task.completed ? '❌' : '✅'}
-                            </button>
-                            <button class="btn delete-btn" onclick="deleteTask(${task.id})">
-                                🗑️
-                            </button>
-                        </div>
-                    </div>
-                `;
-            });
-
-            taskList.innerHTML = html;
-        }
-
-        // Enter key to add task
-        document.getElementById('taskInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                addTask();
-            }
-        });
-
-        // Initial render
-        renderTasks();
-    </script>
-</body>
-
-</html>
- """, unsafe_allow_html=True)
-
-# import streamlit as st
-# import pandas as pd
-# import sqlite3
+import streamlit as st
+import pandas as pd 
+import sqlite3 
 # import uuid
+conn = sqlite3.connect('todotask.db')
+cur = conn.cursor()
+tab = st.text_input("Enter the table name: ")
+if st.button("GO"):
+    if tab != "":
+        cur.execute("SELECT name FROM sqlite_master WHERE type = 'table';")
+        tables = cur.fetchall()
+        st.write(tables)
+        cur.execute(f"CREATE TABLE IF NOT EXISTS todotask{tab}(id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, status VARCHAR(2) NOT NULL, task VARCHAR(2000) NOT NULL);")
+        conn.commit()
+    else:
+        st.warning("It's EMPTY!")
+st.title("To do List: ")
+st.write("---")
 
-# # Initialize database connection
-# conn = sqlite3.connect('todotask.db', check_same_thread=False)
-# cur = conn.cursor()
-
-# # Set page configuration
-# st.set_page_config(page_title="To Do List", page_icon="✅", layout="wide")
-
-# # Generate or retrieve device UUID from session state
-# if 'device_uuid' not in st.session_state:
-#     # Try to get from query params first (for sharing links)
-#     query_params = st.query_params
-#     if 'user_id' in query_params:
-#         st.session_state.device_uuid = query_params['user_id']
-#     else:
-#         # Generate new UUID
-#         st.session_state.device_uuid = str(uuid.uuid4())
-#         # Store in query params for persistence
-#         st.query_params['user_id'] = st.session_state.device_uuid
-
-# tab = st.session_state.device_uuid
-
-# # Title and user info
-# st.title("✅ Personal To Do List")
-# st.markdown(f"**Your ID:** `{tab[:8]}...`")
-
-# # Sidebar for options
-# with st.sidebar:
-#     st.title("📊 Options")
+df = pd.read_sql(f"SELECT * FROM todotask{tab};", con=conn)
+try:
+    for j,i in df.iterrows():
+        a, b = st.columns([12,1])
+        with a:
+            if i['status'] == "❌":
+                choice = st.checkbox(f"{i['task']}", value=False)
+            elif i['status'] == "✅":
+                choice = st.checkbox(f"{i['task']}", value=True)
+            if choice:
+                cur.execute(f"UPDATE todotask{tab} SET status = '✅' WHERE id = ?;", (i['id'],))
+                conn.commit()
+            elif not choice:
+                cur.execute(f"UPDATE todotask{tab} SET status = '❌' WHERE id = ?;", (i['id'],))
+                conn.commit()
+        with b:
+            if st.button("🗑️", key = f"{j}{i}key"):
+                cur.execute(f"DELETE FROM todotask{tab} WHERE id = ?;", (i['id'],))
+                conn.commit()
+                st.rerun()
+        if st.button("Clear ALL"):
+            cur.execute(f"DELETE FROM todotask{tab}")
+            conn.commit()
+            st.rerun()
+except st.errors.StreamlitDuplicateElementId:
+    st.error("There are some duplicate elements.")
     
-#     # Share link functionality
-#     st.subheader("Share Your List")
-#     share_url = f"{st.get_option('server.baseUrlPath') or ''}?user_id={tab}"
-    
-#     if st.button("📋 Copy Share Link"):
-#         st.code(share_url, language="text")
-#         st.info("Share this URL with someone to let them view/edit your tasks")
-    
-#     st.markdown("---")
-    
-#     # Progress statistics
-#     st.subheader("📈 Progress")
-
-# # Initialize table for this user
-# cur.execute(
-#     f'CREATE TABLE IF NOT EXISTS "todotask_{tab}"('
-#     'id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, '
-#     'status VARCHAR(2) NOT NULL, '
-#     'task VARCHAR(2000) NOT NULL, '
-#     'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);'
-# )
-# conn.commit()
-
-# # Main app functionality
-# def load_tasks():
-#     """Load tasks from database"""
-#     try:
-#         df = pd.read_sql(f'SELECT * FROM "todotask_{tab}" ORDER BY created_at DESC;', con=conn)
-#         return df
-#     except:
-#         return pd.DataFrame(columns=['id', 'status', 'task', 'created_at'])
-
-# # Display tasks
-# df = load_tasks()
-# st.markdown("---")
-
-# if len(df) > 0:
-#     # Task counters
-#     completed = df[df['status'] == '✅'].shape[0]
-#     total = len(df)
-    
-#     # Calculate progress percentage
-#     progress_percent = (completed / total * 100) if total > 0 else 0
-    
-#     # Display progress in main area and sidebar
-#     col1, col2, col3 = st.columns(3)
-#     with col1:
-#         st.metric("Total Tasks", total)
-#     with col2:
-#         st.metric("Completed", completed)
-#     with col3:
-#         st.metric("Progress", f"{progress_percent:.1f}%")
-    
-#     # Progress bar
-#     st.progress(progress_percent / 100)
-    
-#     st.subheader(f"Your Tasks")
-    
-#     # Use a custom layout with session state for delete operations
-#     for index, row in df.iterrows():
-#         # Create a unique key for each task row
-#         task_key = f"task_{row['id']}"
-        
-#         # Store task info in session state if not present
-#         if task_key not in st.session_state:
-#             st.session_state[task_key] = {
-#                 'id': row['id'],
-#                 'task': row['task'],
-#                 'status': row['status'],
-#                 'delete_clicked': False
-#             }
-        
-#         # Check if delete was clicked
-#         if st.session_state[task_key]['delete_clicked']:
-#             cur.execute(f'DELETE FROM "todotask_{tab}" WHERE id = ?;', (row['id'],))
-#             conn.commit()
-#             del st.session_state[task_key]  # Remove from session state
-#             st.rerun()
-        
-#         # Create the horizontal layout - Checkbox, Task, Action Buttons
-#         col1, col2, col3, col4 = st.columns([0.5, 4, 1, 0.5])
-        
-#         with col1:
-#             # Display status indicator
-#             if row['status'] == "✅":
-#                 st.markdown("<div style='text-align: center;'>✅</div>", unsafe_allow_html=True)
-#             else:
-#                 st.markdown("<div style='text-align: center;'>⬜</div>", unsafe_allow_html=True)
-        
-#         with col2:
-#             # Display task text
-#             if row['status'] == "✅":
-#                 st.markdown(f"<div style='color: gray; text-decoration: line-through; padding: 5px;'>{row['task']}</div>", 
-#                            unsafe_allow_html=True)
-#             else:
-#                 st.markdown(f"<div style='font-weight: bold; padding: 5px;'>{row['task']}</div>", 
-#                            unsafe_allow_html=True)
-        
-#         with col3:
-#             # Toggle status button
-#             if row['status'] == "✅":
-#                 if st.button("Undo", key=f"mark_undone_{row['id']}", use_container_width=True):
-#                     cur.execute(f'UPDATE "todotask_{tab}" SET status = "❌" WHERE id = ?;', (row['id'],))
-#                     conn.commit()
-#                     st.rerun()
-#             else:
-#                 if st.button("DONE", key=f"mark_done_{row['id']}", use_container_width=True):
-#                     cur.execute(f'UPDATE "todotask_{tab}" SET status = "✅" WHERE id = ?;', (row['id'],))
-#                     conn.commit()
-#                     st.rerun()
-        
-#         with col4:
-#             # Delete button with confirmation
-#             if st.button("🗑️", key=f"delete_{row['id']}", use_container_width=True):
-#                 st.session_state[task_key]['delete_clicked'] = True
-#                 st.rerun()
-        
-#         st.markdown("---")
-# else:
-#     st.info("✨ No tasks yet! Add your first task below.")
-
-# # Add new task section
-# st.subheader("➕ Add New Task")
-# with st.form("add_task", clear_on_submit=True):
-#     task_input = st.text_input("Enter your task:", placeholder="What needs to be done?")
-    
-#     col1, col2 = st.columns([1, 4])
-#     with col1:
-#         submitted = st.form_submit_button("Add Task", use_container_width=True)
-    
-#     if submitted and task_input.strip() != "":
-#         cur.execute(f'INSERT INTO "todotask_{tab}"(status, task) VALUES(?, ?);', ('❌', task_input.strip()))
-#         conn.commit()
-#         st.success("Task added successfully!")
-#         st.rerun()
-#     elif submitted and task_input.strip() == "":
-#         st.warning("Please enter a task description!")
-
-# # Clear all tasks button with confirmation
-# if len(df) > 0:
-#     st.markdown("---")
-#     st.subheader("⚙️ Manage Tasks")
-    
-#     # Initialize clear confirmation in session state
-#     if 'show_clear_confirmation' not in st.session_state:
-#         st.session_state.show_clear_confirmation = False
-    
-#     if not st.session_state.show_clear_confirmation:
-#         if st.button("🗑️ Clear All Tasks", type="secondary", use_container_width=True):
-#             st.session_state.show_clear_confirmation = True
-#             st.rerun()
-#     else:
-#         st.warning("⚠️ Are you sure you want to delete ALL tasks? This action cannot be undone!")
-#         col1, col2 = st.columns(2)
-#         with col1:
-#             if st.button("✅ Yes, Delete All", type="primary", use_container_width=True):
-#                 cur.execute(f'DELETE FROM "todotask_{tab}"')
-#                 conn.commit()
-#                 st.session_state.show_clear_confirmation = False
-#                 st.success("All tasks have been cleared!")
-#                 st.rerun()
-#         with col2:
-#             if st.button("❌ No, Cancel", type="secondary", use_container_width=True):
-#                 st.session_state.show_clear_confirmation = False
-#                 st.rerun()
-
-# # Update sidebar statistics after all operations
-# with st.sidebar:
-#     # Reload data for accurate stats
-#     df_updated = load_tasks()
-#     completed_updated = df_updated[df_updated['status'] == '✅'].shape[0] if len(df_updated) > 0 else 0
-#     total_updated = len(df_updated)
-    
-#     if total_updated > 0:
-#         progress_updated = (completed_updated / total_updated * 100)
-        
-#         # Progress circle visualization
-#         st.markdown(f"""
-#         <div style="text-align: center;">
-#             <div style="font-size: 24px; font-weight: bold;">{progress_updated:.0f}%</div>
-#             <div style="font-size: 14px; color: #666;">Complete</div>
-#         </div>
-#         """, unsafe_allow_html=True)
-        
-#         st.markdown(f"**Completed:** {completed_updated}/{total_updated}")
-        
-#         # Mini progress bar
-#         st.progress(progress_updated / 100)
-        
-#         # Stats
-#         col_sb1, col_sb2 = st.columns(2)
-#         with col_sb1:
-#             st.metric("Total", total_updated)
-#         with col_sb2:
-#             st.metric("Done", completed_updated)
-#     else:
-#         st.info("No tasks yet")
-
-# # Close database connection
-# conn.close()
-
-# # Footer
-# st.markdown("---")
-# st.caption("🔒 Your tasks are stored locally and accessible only with your unique ID")
-
-# import streamlit as st
-# import pandas as pd 
-# import sqlite3 
-# # import uuid
-# conn = sqlite3.connect('todotask.db')
-# cur = conn.cursor()
-# tab = st.text_input("Enter the table name: ")
-# if st.button("GO"):
-#     if tab != "":
-#         cur.execute("SELECT name FROM sqlite_master WHERE type = 'table';")
-#         tables = cur.fetchall()
-#         st.write(tables)
-#         cur.execute(f"CREATE TABLE IF NOT EXISTS todotask{tab}(id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, status VARCHAR(2) NOT NULL, task VARCHAR(2000) NOT NULL);")
-#         conn.commit()
-#     else:
-#         st.warning("It's EMPTY!")
-# st.title("To do List: ")
-# st.write("---")
-
-# df = pd.read_sql(f"SELECT * FROM todotask{tab};", con=conn)
-# try:
-#     for j,i in df.iterrows():
-#         a, b = st.columns([12,1])
-#         with a:
-#             if i['status'] == "❌":
-#                 choice = st.checkbox(f"{i['task']}", value=False)
-#             elif i['status'] == "✅":
-#                 choice = st.checkbox(f"{i['task']}", value=True)
-#             if choice:
-#                 cur.execute(f"UPDATE todotask{tab} SET status = '✅' WHERE id = ?;", (i['id'],))
-#                 conn.commit()
-#             elif not choice:
-#                 cur.execute(f"UPDATE todotask{tab} SET status = '❌' WHERE id = ?;", (i['id'],))
-#                 conn.commit()
-#         with b:
-#             if st.button("🗑️", key = f"{j}{i}key"):
-#                 cur.execute(f"DELETE FROM todotask{tab} WHERE id = ?;", (i['id'],))
-#                 conn.commit()
-#                 st.rerun()
-#         if st.button("Clear ALL"):
-#             cur.execute(f"DELETE FROM todotask{tab}")
-#             conn.commit()
-#             st.rerun()
-# except st.errors.StreamlitDuplicateElementId:
-#     st.error("There are some duplicate elements.")
-    
-# st.write("---")
-# with st.form(f"TASK", clear_on_submit=True):
-#     abc = st.text_input("Enter Task: ")
-#     if st.form_submit_button("ADD"):
-#         if abc != "":
-#             cur.execute(f"INSERT INTO todotask{tab}(status, task) VALUES(?, ?);", ('❌',abc))
-#             conn.commit()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+st.write("---")
+with st.form(f"TASK", clear_on_submit=True):
+    abc = st.text_input("Enter Task: ")
+    if st.form_submit_button("ADD"):
+        if abc != "":
+            cur.execute(f"INSERT INTO todotask{tab}(status, task) VALUES(?, ?);", ('❌',abc))
+            conn.commit()
 
 
 
