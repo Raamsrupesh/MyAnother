@@ -2,70 +2,100 @@ import streamlit as st
 import sqlite3
 import uuid
 
-# Setup
-conn = sqlite3.connect('todo.db', check_same_thread=False)
-cur = conn.cursor()
+# ========== SETUP ==========
+conn = sqlite3.connect('todo_app.db', check_same_thread=False)
+c = conn.cursor()
 
-# User
-if 'user' not in st.session_state:
-    st.session_state.user = str(uuid.uuid4())[:8]
-user = st.session_state.user
+# User ID
+if 'todo_user_id' not in st.session_state:
+    st.session_state.todo_user_id = str(uuid.uuid4())[:8]
+USER_ID = st.session_state.todo_user_id
 
-cur.execute(f'''
-    CREATE TABLE IF NOT EXISTS todo_{user} (
+# Create table
+c.execute(f'''
+    CREATE TABLE IF NOT EXISTS tasks_{USER_ID} (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        text TEXT,
-        done BOOLEAN DEFAULT 0
+        description TEXT NOT NULL,
+        is_done BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
 ''')
+conn.commit()
 
-st.title(f"📝 To Do List ({user})")
+# ========== PAGE ==========
+st.set_page_config(page_title="To Do List", page_icon="✅")
+st.title("✅ To Do List")
+st.caption(f"User ID: {USER_ID}")
 
-# Add task
-task = st.text_input("Add task:")
-if st.button("Add") and task:
-    cur.execute(f"INSERT INTO todo_{user}(text) VALUES(?)", (task,))
-    conn.commit()
-    st.rerun()
+# ========== ADD TASK ==========
+with st.form("add_task_form", clear_on_submit=True):
+    new_task = st.text_input("What needs to be done?", placeholder="Enter your task here...")
+    add_clicked = st.form_submit_button("➕ Add Task")
+    
+    if add_clicked and new_task.strip():
+        c.execute(f"INSERT INTO tasks_{USER_ID}(description) VALUES(?)", (new_task.strip(),))
+        conn.commit()
+        st.rerun()
 
-# Handle button clicks
-if 'clicked_button' in st.session_state:
-    action, task_id = st.session_state.clicked_button
-    if action == 'toggle':
-        cur.execute(f"UPDATE todo_{user} SET done = NOT done WHERE id=?", (task_id,))
-    elif action == 'delete':
-        cur.execute(f"DELETE FROM todo_{user} WHERE id=?", (task_id,))
-    conn.commit()
-    del st.session_state.clicked_button
-    st.rerun()
-
-# Display tasks
-tasks = cur.execute(f"SELECT * FROM todo_{user}").fetchall()
+# ========== DISPLAY TASKS ==========
+tasks = c.execute(f"SELECT * FROM tasks_{USER_ID} ORDER BY id DESC").fetchall()
 
 if tasks:
-    st.write("---")
-    for task_id, task_text, task_done in tasks:
-        # ONE LINE LAYOUT
-        col1, col2, col3, col4 = st.columns([1, 8, 1, 1])
-        
-        with col1:
-            st.write("✅" if task_done else "⬜")
-        
-        with col2:
-            if task_done:
-                st.markdown(f"~~{task_text}~~")
-            else:
-                st.write(task_text)
-        
-        with col3:
-            if st.button("✅" if not task_done else "❌", key=f"t{task_id}"):
-                st.session_state.clicked_button = ('toggle', task_id)
-                st.rerun()
-        
-        with col4:
-            if st.button("🗑️", key=f"d{task_id}"):
-                st.session_state.clicked_button = ('delete', task_id)
-                st.rerun()
+    # Progress
+    total = len(tasks)
+    done = sum(1 for _, _, is_done, _ in tasks if is_done)
+    progress = done / total if total > 0 else 0
+    
+    st.progress(progress)
+    st.caption(f"**{done}/{total} completed** ({int(progress*100)}%)")
+    st.markdown("---")
+    
+    # Display each task
+    for task_id, description, is_done, created_at in tasks:
+        # Create ONE LINE using a container
+        with st.container():
+            col_status, col_task, col_toggle, col_delete = st.columns([0.3, 6, 0.8, 0.8])
+            
+            with col_status:
+                # Status icon
+                if is_done:
+                    st.markdown("<div style='text-align: center; font-size: 18px; color: green;'>✓</div>", 
+                              unsafe_allow_html=True)
+                else:
+                    st.markdown("<div style='text-align: center; font-size: 18px;'>○</div>", 
+                              unsafe_allow_html=True)
+            
+            with col_task:
+                # Task text
+                if is_done:
+                    st.markdown(f"<div style='text-decoration: line-through; color: #777;'>{description}</div>", 
+                              unsafe_allow_html=True)
+                else:
+                    st.markdown(f"<div>{description}</div>", unsafe_allow_html=True)
+            
+            with col_toggle:
+                # Toggle button
+                if st.button("Toggle", key=f"tog_{task_id}", help="Mark complete/incomplete"):
+                    c.execute(f"UPDATE tasks_{USER_ID} SET is_done = NOT is_done WHERE id = ?", (task_id,))
+                    conn.commit()
+                    st.rerun()
+            
+            with col_delete:
+                # Delete button
+                if st.button("Delete", key=f"del_{task_id}", help="Delete task"):
+                    c.execute(f"DELETE FROM tasks_{USER_ID} WHERE id = ?", (task_id,))
+                    conn.commit()
+                    st.rerun()
+    
+    # Clear all
+    st.markdown("---")
+    if st.button("🗑️ Clear All Tasks", type="secondary", use_container_width=True):
+        c.execute(f"DELETE FROM tasks_{USER_ID}")
+        conn.commit()
+        st.rerun()
+
+else:
+    st.info("✨ No tasks yet! Add your first task above.")
 
 conn.close()
 
@@ -361,6 +391,7 @@ conn.close()
 #         if abc != "":
 #             cur.execute(f"INSERT INTO todotask{tab}(status, task) VALUES(?, ?);", ('❌',abc))
 #             conn.commit()
+
 
 
 
