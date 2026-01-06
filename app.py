@@ -61,6 +61,7 @@ with st.form(f"TASK", clear_on_submit=True):
         if abc != "":
             cur.execute(f'INSERT INTO "todotask{tab}"(status, task) VALUES(?, ?);', ('❌',abc))
             conn.commit()
+            st.rerun()
 
 # import streamlit as st
 # import pandas as pd 
@@ -115,6 +116,7 @@ with st.form(f"TASK", clear_on_submit=True):
 #         if abc != "":
 #             cur.execute(f"INSERT INTO todotask{tab}(status, task) VALUES(?, ?);", ('❌',abc))
 #             conn.commit()
+
 
 
 
