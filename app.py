@@ -144,20 +144,20 @@ def load_tasks():
 df = load_tasks()
 
 # PROGRESS SECTION
-if len(df) > 0:
-    completed = df[df['status'] == '✅'].shape[0]
-    total = len(df)
-    progress_percent = (completed / total * 100) if total > 0 else 0
+# if len(df) > 0:
+#     completed = df[df['status'] == '✅'].shape[0]
+#     total = len(df)
+#     progress_percent = (completed / total * 100) if total > 0 else 0
     
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Total", total)
-    with col2:
-        st.metric("Done", completed)
-    with col3:
-        st.metric("Progress", f"{progress_percent:.0f}%")
+#     col1, col2, col3 = st.columns(3)
+#     with col1:
+#         st.metric("Total", total)
+#     with col2:
+#         st.metric("Done", completed)
+#     with col3:
+#         st.metric("Progress", f"{progress_percent:.0f}%")
     
-    st.progress(progress_percent / 100)
+#     st.progress(progress_percent / 100)
 
 # TASKS SECTION - USING STREAMLIT COLUMNS FOR HORIZONTAL LAYOUT
 if len(df) > 0:
@@ -560,6 +560,7 @@ st.markdown("""
 #         if abc != "":
 #             cur.execute(f"INSERT INTO todotask{tab}(status, task) VALUES(?, ?);", ('❌',abc))
 #             conn.commit()
+
 
 
 
