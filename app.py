@@ -1,307 +1,362 @@
 import streamlit as st
-import pandas as pd
-import sqlite3
-import uuid
+st.markdown("""<!DOCTYPE html>
+<html lang="en">
 
-# Initialize database connection
-conn = sqlite3.connect('todotask.db', check_same_thread=False)
-cur = conn.cursor()
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To Do List</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-# Set page configuration
-st.set_page_config(
-    page_title="To Do List",
-    page_icon="✅",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
 
-# Generate or retrieve device UUID
-if 'device_uuid' not in st.session_state:
-    query_params = st.query_params
-    if 'user_id' in query_params:
-        st.session_state.device_uuid = query_params['user_id']
-    else:
-        st.session_state.device_uuid = str(uuid.uuid4())
-        st.query_params['user_id'] = st.session_state.device_uuid
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
 
-tab = st.session_state.device_uuid
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
 
-# Simple CSS for mobile optimization
-st.markdown("""
-<style>
-/* Mobile-first design */
-.task-container {
-    background: white;
-    border-radius: 10px;
-    padding: 12px;
-    margin: 8px 0;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    border: 1px solid #e0e0e0;
-}
+        .user-id {
+            background: #f0f0f0;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-family: monospace;
+            color: #666;
+        }
 
-.completed-task {
-    background: #f8f9fa;
-    opacity: 0.9;
-}
+        .add-form {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
 
-.stButton > button {
-    min-height: 36px;
-    padding: 0 12px;
-    font-size: 14px;
-}
+        .task-input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+        }
 
-/* Force horizontal layout for task rows */
-.task-row {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
-    align-items: center;
-    width: 100%;
-    margin: 8px 0;
-    padding: 8px;
-    background: white;
-    border-radius: 10px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    border: 1px solid #e0e0e0;
-    overflow: hidden;
-}
+        .add-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        }
 
-.task-row [data-testid="column"] {
-    min-width: 0 !important;
-    flex-shrink: 1 !important;
-    flex-basis: auto !important;
-}
+        .task-list {
+            margin-top: 20px;
+        }
 
-.task-row [data-testid="column"]:nth-child(2) .task-text {
-    max-width: 100px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
+        /* ONE LINE TASK ROW */
+        .task-row {
+            display: flex;
+            align-items: center;
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 12px 15px;
+            margin: 10px 0;
+            border: 1px solid #e9ecef;
+            gap: 10px;
+        }
 
-@media (max-width: 768px) {
-    .task-container {
-        padding: 10px;
-        margin: 6px 0;
-    }
-    
-    .mobile-compact .stButton > button {
-        min-width: 30px;
-        padding: 0 4px;
-        font-size: 10px;
-    }
-    
-    .task-row {
-        padding: 4px;
-        margin: 6px 0;
-    }
-    
-    .task-checkbox {
-        width: 16px;
-        height: 16px;
-        font-size: 10px;
-    }
-    
-    .task-row [data-testid="column"]:nth-child(2) .task-text {
-        max-width: 80px;
-    }
-}
+        .task-checkbox {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid #adb5bd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
 
-/* Checkbox styling */
-.checkbox-wrapper {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-}
+        .task-checkbox.checked {
+            background: #4CAF50;
+            border-color: #4CAF50;
+            color: white;
+        }
 
-.task-checkbox {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    border: 2px solid #ddd;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-}
+        .task-text {
+            flex: 1;
+            font-size: 16px;
+            color: #333;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
 
-.checked {
-    background: #4CAF50;
-    border-color: #4CAF50;
-    color: white;
-}
-</style>
-""", unsafe_allow_html=True)
+        .task-text.completed {
+            text-decoration: line-through;
+            color: #6c757d;
+        }
 
-# HEADER
-st.markdown(f"""
-<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-            color: white; padding: 16px; border-radius: 10px; margin-bottom: 16px;">
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-        <div>
-            <h1 style="margin: 0; font-size: 22px;">✅ To Do List</h1>
-            <p style="margin: 5px 0 0 0; font-size: 13px; opacity: 0.9;">
-                ID: {tab[:8]}...
-            </p>
+        .task-buttons {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            min-width: 40px;
+        }
+
+        .toggle-btn {
+            background: #007bff;
+            color: white;
+        }
+
+        .delete-btn {
+            background: #dc3545;
+            color: white;
+        }
+
+        .clear-all {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 20px;
+            width: 100%;
+            font-size: 16px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6c757d;
+        }
+
+        .progress-bar {
+            height: 6px;
+            background: #e9ecef;
+            border-radius: 3px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #4CAF50;
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 15px;
+            }
+
+            .task-row {
+                padding: 10px 12px;
+            }
+
+            .btn {
+                min-width: 35px;
+                padding: 5px 8px;
+                font-size: 13px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>
+            ✅ To Do List
+            <span class="user-id" id="userId">USER_ID</span>
+        </h1>
+
+        <div class="add-form">
+            <input type="text" class="task-input" id="taskInput" placeholder="What needs to be done?">
+            <button class="add-btn" onclick="addTask()">Add Task</button>
         </div>
-        <button onclick="navigator.clipboard.writeText('{st.get_option('server.baseUrlPath') or ''}?user_id={tab}')" 
-                style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); 
-                       padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer;">
-            📋 Share
-        </button>
+
+        <div class="stats">
+            <span id="progressText">0/0 completed</span>
+            <span id="progressPercent">0%</span>
+        </div>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+
+        <div class="task-list" id="taskList">
+            Tasks will appear here
+        </div>
+
+        <button class="clear-all" onclick="clearAllTasks()">🗑️ Clear All Tasks</button>
     </div>
-</div>
-""", unsafe_allow_html=True)
 
-# Initialize table
-cur.execute(
-    f'CREATE TABLE IF NOT EXISTS "todotask_{tab}"('
-    'id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, '
-    'status VARCHAR(2) NOT NULL, '
-    'task VARCHAR(2000) NOT NULL, '
-    'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);'
-)
-conn.commit()
+    <script>
+        // Generate user ID
+        let userId = localStorage.getItem('todo_user_id');
+        if (!userId) {
+            userId = 'user_' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('todo_user_id', userId);
+        }
+        document.getElementById('userId').textContent = userId;
 
-# Load tasks
-def load_tasks():
-    try:
-        df = pd.read_sql(f'SELECT * FROM "todotask_{tab}" ORDER BY created_at DESC;', con=conn)
-        return df
-    except:
-        return pd.DataFrame(columns=['id', 'status', 'task', 'created_at'])
+        // Load tasks from localStorage
+        let tasks = JSON.parse(localStorage.getItem('tasks_' + userId)) || [];
 
-df = load_tasks()
+        // Save tasks to localStorage
+        function saveTasks() {
+            localStorage.setItem('tasks_' + userId, JSON.stringify(tasks));
+            renderTasks();
+        }
 
-# PROGRESS SECTION
-if len(df) > 0:
-    completed = df[df['status'] == '✅'].shape[0]
-    total = len(df)
-    progress_percent = (completed / total * 100) if total > 0 else 0
-    
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Total", total)
-    with col2:
-        st.metric("Done", completed)
-    with col3:
-        st.metric("Progress", f"{progress_percent:.0f}%")
-    
-    st.progress(progress_percent / 100)
+        // Add new task
+        function addTask() {
+            const input = document.getElementById('taskInput');
+            const text = input.value.trim();
 
-# TASKS SECTION - USING FLEX ROW FOR HORIZONTAL ALIGNMENT
-if len(df) > 0:
-    st.markdown("### 📝 Your Tasks")
-    
-    for index, row in df.iterrows():
-        is_completed = row['status'] == "✅"
-        
-        # Use a flex row container for horizontal layout
-        st.markdown('<div class="task-row">', unsafe_allow_html=True)
-        
-        # Create 4 columns inside the flex row
-        col_check, col_task, col_mark, col_delete = st.columns([0.5, 2, 1, 1])
-        
-        with col_check:
-            # Custom checkbox display
-            if is_completed:
-                st.markdown('<div class="task-checkbox checked">✓</div>', unsafe_allow_html=True)
-            else:
-                st.markdown('<div class="task-checkbox"></div>', unsafe_allow_html=True)
-        
-        with col_task:
-            # Task text with strikethrough if completed, and truncation for mobile
-            task_class = "task-text"
-            if is_completed:
-                st.markdown(f"<div class='{task_class}' style='text-decoration: line-through; color: #666;'>{row['task']}</div>", 
-                           unsafe_allow_html=True)
-            else:
-                st.markdown(f"<div class='{task_class}' style='font-weight: 500;'>{row['task']}</div>", 
-                           unsafe_allow_html=True)
-        
-        with col_mark:
-            # Mark complete/incomplete button
-            if is_completed:
-                if st.button("❌", key=f"undo_{row['id']}", help="Mark incomplete"):
-                    cur.execute(f'UPDATE "todotask_{tab}" SET status = "❌" WHERE id = ?;', (row['id'],))
-                    conn.commit()
-                    st.rerun()
-            else:
-                if st.button("✅", key=f"done_{row['id']}", help="Mark complete"):
-                    cur.execute(f'UPDATE "todotask_{tab}" SET status = "✅" WHERE id = ?;', (row['id'],))
-                    conn.commit()
-                    st.rerun()
-        
-        with col_delete:
-            # Delete button
-            if st.button("🗑️", key=f"delete_{row['id']}", help="Delete task"):
-                cur.execute(f'DELETE FROM "todotask_{tab}" WHERE id = ?;', (row['id'],))
-                conn.commit()
-                st.rerun()
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # Divider
-        st.markdown("---")
-else:
-    st.info("📝 No tasks yet! Add your first task below.")
+            if (text) {
+                tasks.push({
+                    id: Date.now(),
+                    text: text,
+                    completed: false
+                });
+                input.value = '';
+                saveTasks();
+            }
+        }
 
-# ADD TASK FORM
-st.markdown("### ➕ Add New Task")
-with st.form("add_task", clear_on_submit=True):
-    col_input, col_button = st.columns([3, 1])
-    
-    with col_input:
-        task_input = st.text_input(
-            "Task description:",
-            placeholder="What needs to be done?",
-            label_visibility="collapsed"
-        )
-    
-    with col_button:
-        submitted = st.form_submit_button("Add", use_container_width=True)
-    
-    if submitted and task_input.strip() != "":
-        cur.execute(f'INSERT INTO "todotask_{tab}"(status, task) VALUES(?, ?);', ('❌', task_input.strip()))
-        conn.commit()
-        st.rerun()
-    elif submitted and task_input.strip() == "":
-        st.warning("Please enter a task")
+        // Toggle task completion
+        function toggleTask(id) {
+            const task = tasks.find(t => t.id === id);
+            if (task) {
+                task.completed = !task.completed;
+                saveTasks();
+            }
+        }
 
-# CLEAR ALL BUTTON
-if len(df) > 0:
-    st.markdown("---")
-    
-    if 'show_clear_confirmation' not in st.session_state:
-        st.session_state.show_clear_confirmation = False
-    
-    if not st.session_state.show_clear_confirmation:
-        if st.button("🗑️ Clear All Tasks", type="secondary", use_container_width=True):
-            st.session_state.show_clear_confirmation = True
-            st.rerun()
-    else:
-        st.warning("Delete ALL tasks? This cannot be undone!")
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("✅ Yes", type="primary", use_container_width=True):
-                cur.execute(f'DELETE FROM "todotask_{tab}"')
-                conn.commit()
-                st.session_state.show_clear_confirmation = False
-                st.rerun()
-        with col2:
-            if st.button("❌ No", type="secondary", use_container_width=True):
-                st.session_state.show_clear_confirmation = False
-                st.rerun()
+        // Delete task
+        function deleteTask(id) {
+            tasks = tasks.filter(t => t.id !== id);
+            saveTasks();
+        }
 
-conn.close()
+        // Clear all tasks
+        function clearAllTasks() {
+            if (tasks.length > 0 && confirm('Are you sure you want to delete all tasks?')) {
+                tasks = [];
+                saveTasks();
+            }
+        }
 
-# FOOTER
-st.markdown("""
-<div style="text-align: center; color: #666; font-size: 12px; padding: 20px;">
-    🔒 Tasks saved locally • 📱 Mobile-friendly • 🔗 Share with link
-</div>
-""", unsafe_allow_html=True)
+        // Render tasks
+        function renderTasks() {
+            const taskList = document.getElementById('taskList');
+            const progressText = document.getElementById('progressText');
+            const progressPercent = document.getElementById('progressPercent');
+            const progressFill = document.getElementById('progressFill');
+
+            if (tasks.length === 0) {
+                taskList.innerHTML = `
+                    <div class="empty-state">
+                        <p>📝 No tasks yet!</p>
+                        <p style="margin-top: 10px; font-size: 14px;">Add your first task above</p>
+                    </div>
+                `;
+                progressText.textContent = '0/0 completed';
+                progressPercent.textContent = '0%';
+                progressFill.style.width = '0%';
+                return;
+            }
+
+            // Calculate progress
+            const completed = tasks.filter(t => t.completed).length;
+            const total = tasks.length;
+            const percent = Math.round((completed / total) * 100);
+
+            progressText.textContent = `${completed}/${total} completed`;
+            progressPercent.textContent = `${percent}%`;
+            progressFill.style.width = `${percent}%`;
+
+            // Render tasks
+            let html = '';
+            tasks.forEach(task => {
+                html += `
+                    <div class="task-row">
+                        <div class="task-checkbox ${task.completed ? 'checked' : ''}" 
+                             onclick="toggleTask(${task.id})">
+                            ${task.completed ? '✓' : ''}
+                        </div>
+                        <div class="task-text ${task.completed ? 'completed' : ''}">
+                            ${task.text}
+                        </div>
+                        <div class="task-buttons">
+                            <button class="btn toggle-btn" onclick="toggleTask(${task.id})">
+                                ${task.completed ? '❌' : '✅'}
+                            </button>
+                            <button class="btn delete-btn" onclick="deleteTask(${task.id})">
+                                🗑️
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            taskList.innerHTML = html;
+        }
+
+        // Enter key to add task
+        document.getElementById('taskInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addTask();
+            }
+        });
+
+        // Initial render
+        renderTasks();
+    </script>
+</body>
+
+</html>
+ """, unsafe_allow_html=True)
 
 # import streamlit as st
 # import pandas as pd
@@ -595,6 +650,7 @@ st.markdown("""
 #         if abc != "":
 #             cur.execute(f"INSERT INTO todotask{tab}(status, task) VALUES(?, ?);", ('❌',abc))
 #             conn.commit()
+
 
 
 
