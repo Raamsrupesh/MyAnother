@@ -54,7 +54,7 @@ except st.errors.StreamlitDuplicateElementId:
     
 st.write("---")
 with st.form(f"TASK", clear_on_submit=True):
-    abc = st.text_input("Enter Task: ")
+    abc = st.text_input("Enter Task/item: ")
     if st.form_submit_button("ADD"):
         if abc != "":
             cur.execute(f'INSERT INTO "todotask{tab}"(status, task) VALUES(?, ?);', ('❌',abc))
@@ -114,6 +114,7 @@ with st.form(f"TASK", clear_on_submit=True):
 #         if abc != "":
 #             cur.execute(f"INSERT INTO todotask{tab}(status, task) VALUES(?, ?);", ('❌',abc))
 #             conn.commit()
+
 
 
 
