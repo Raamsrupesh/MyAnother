@@ -1,7 +1,8 @@
 import sqlite3 
 import streamlit as st 
 import pandas as pd 
-st.header("SQL query executor: ")
+st.set_page_config(page_title="SQL Query Executor", layout="wide")
+st.header("SQL query executor")
 DB_name = st.text_input("Enter the name of the database: ")
 if DB_name != "":
     conn = sqlite3.connect(f"{DB_name}.db")
@@ -49,3 +50,4 @@ if DB_name != "":
             st.error(f"Error fetching output: {e}")
 else:
     st.error("The name of the database is empty!!")
+
